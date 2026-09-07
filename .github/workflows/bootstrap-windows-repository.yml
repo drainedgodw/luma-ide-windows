@@ -1,0 +1,33 @@
+name: Bootstrap Windows repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-windows-repository.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import the Luma source snapshot
+        shell: bash
+        run: |
+          source_dir="$(mktemp -d)/source"
+          git clone --depth 1 https://github.com/drainedgodw/Luma.git "$source_dir"
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github/workflows/bootstrap-windows-repository.yml' \
+            "$source_dir/" ./
+          rm -f .github/workflows/bootstrap-windows-repository.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: import Luma 0.2.0 source snapshot"
+          git push origin main
