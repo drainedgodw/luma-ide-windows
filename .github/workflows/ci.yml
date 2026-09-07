@@ -25,6 +25,13 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Configure Python for node-gyp
+        shell: pwsh
+        run: |
+          "npm_config_python=$env:pythonLocation\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Install dependencies
         shell: pwsh
         run: |
