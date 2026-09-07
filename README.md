@@ -1,129 +1,88 @@
-<div align="center">
+# Luma for Windows
 
-<img src="build/icon.png" width="96" alt="Luma logo" />
+Luma is a visual, Git-first desktop IDE. This repository is the Windows edition, split from the original Linux codebase so platform behavior, packaging, and releases can evolve independently.
 
-# Luma
+> **Preview status:** automated Windows packaging passes, but manual Windows 10/11 smoke testing is still pending. The download below is an unsigned preview, not a stable release.
 
-**See what Git will do before it does it.**
+## Download for Windows
 
-A Linux-first visual Git workspace: understandable history, previewable operations, and recovery from mistakes.
+[**Download Luma installer for Windows 10/11 x64**](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/Luma-Windows-Setup-x64.exe)
 
-![platform](https://img.shields.io/badge/platform-Linux-1793d1) ![license](https://img.shields.io/badge/license-MIT-22c55e) ![status](https://img.shields.io/badge/status-developer%20preview-f59e0b)
+The installer is self-contained. It includes the Electron runtime, Luma application files, production dependencies, the native terminal module, and verified MinGit for Git operations. You do **not** need to install Node.js, npm, Python, Visual Studio, or Git separately to run the installed application.
 
-</div>
+- [Portable x64 executable](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/Luma-Windows-Portable-x64.exe)
+- [SHA-256 checksums](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/SHA256SUMS.txt)
+- [Preview release notes](https://github.com/drainedgodw/luma-ide-windows/releases/tag/windows-preview)
 
-> [!WARNING]
-> Luma 0.2 is a developer preview. Keep a remote backup and begin with non-critical repositories.
+Because this preview is not code-signed yet, Microsoft Defender SmartScreen may show a warning. Verify the checksum before running it. The current milestone and remaining manual checks are tracked in [PORTING.md](PORTING.md).
 
-## Why Luma?
+## First milestone
 
-Most IDEs treat Git as a sidebar. Luma treats history as the workspace itself: inspect commits in a visual web, preview a rewrite before applying it, and keep a recovery point before moving HEAD.
+- Native Windows x64 installer and portable package.
+- Integrated PowerShell terminal with workspace-trust protection.
+- Bundled, checksum-verified MinGit runtime.
+- Visual editing, search, Git history, staging, conflict tools, and GitHub workflows retained from Luma 0.2.0.
+- Windows CI for type checks, tests, renderer builds, runtime verification, and packaging.
 
-## Install
+## Development setup
 
-One command — installs to `~/.local`, adds Luma to your application menu, no Node.js needed:
+Requirements for source development only:
 
-```sh
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/drainedgodw/Luma/main/install.sh)"
+- Windows 10 or 11 x64
+- [Node.js 22.20](https://nodejs.org/) and npm 10 or newer
+- [Git for Windows](https://git-scm.com/download/win)
+- Python 3.11 for the current native-module rebuild toolchain
+- Visual Studio 2022 Build Tools with the **Desktop development with C++** workload if `node-pty` needs a local rebuild
+
+```powershell
+git clone https://github.com/drainedgodw/luma-ide-windows.git
+Set-Location luma-ide-windows
+npm ci
+npm run dev
 ```
 
-The installer works like a tiny pacman/AUR: it resolves the right artifact, verifies it, and swaps the install atomically. The same command installs and updates. Remove with `-- --uninstall` (keep settings) or `-- --purge` (remove everything).
+Run the quality checks:
 
-Manual download is also available from [GitHub Releases](https://github.com/drainedgodw/Luma/releases). Every artifact carries a SHA-256 checksum and a keyless cosign bundle (`*.sigstore.json`) signed by this repo's GitHub Actions identity — the installer verifies the checksum always and the signature whenever `cosign` is present:
-
-```sh
-cosign verify-blob --bundle Luma-0.2.0.AppImage.sigstore.json \
-  --certificate-identity-regexp 'https://github[.]com/drainedgodw/Luma/[.]github/workflows/release[.]yml@.*' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  Luma-0.2.0.AppImage
+```powershell
+npm run check
+npm run build
 ```
 
-### From source
+Create the self-contained Windows x64 installer and portable executable:
 
-```sh
-git clone https://github.com/drainedgodw/Luma.git
-cd Luma
-bash scripts/bootstrap.sh dev
+```powershell
+npm run dist:win
 ```
 
-The bootstrap downloads a private, compatible Node 22 and a private CPython 3.11 (for the node-pty native build) into the ignored `.luma/` directory — it does not touch your system Node, Python or shell config. See `bash scripts/bootstrap.sh --help` for test/build/clean commands.
+The build downloads the pinned MinGit archive, verifies its SHA-256 checksum, and writes packages to `dist/`.
 
-## Features
+## Runtime overrides
 
-- **History** — commit graph in two views: classic Lanes and an interactive Orbit web (drag to pan, wheel to zoom, hover traces the branch)
-- **Changes** — staging by drag & drop, diffs, conflict resolution, commit messages with a template history
-- **Visual rebase** — reorder, squash, fixup, reword and drop commits; cherry-pick, revert, tags, merge strategy choice
-- **Safety net** — Secret Guard scans staged additions, every rollback creates a checkpoint branch, Rescue browses the reflog, bisect and stash included
-- **Editor** — CodeMirror 6 with syntax highlighting for 8 languages, tabs, find & replace, project-wide search (Ctrl+Shift+F), quick open (Ctrl+P)
-- **Terminal** — integrated terminal unlocked per repository via Workspace Trust; drag its divider to resize it, use the keyboard, or maximize it with one click
-- **Interface sounds** — subtle, distinct feedback for navigation, toggles and actions, with a master switch and volume control
-- **GitHub** — fine-grained PAT or SSH keys, clone, fetch, pull, push; the token is encrypted and never stored in plain text
-- **Languages & Ecosystem** — detects runtimes and project dependencies, installs packages and frameworks with a whitelisted command set
-- **Updates** — anonymous version check against a plain `update.json` file (no accounts, no telemetry); update to the release or the latest main build from Settings
-- **Two themes** — Cosmos and Liquid Glass
+Luma uses Windows PowerShell by default. Set `LUMA_SHELL` before starting the app to use another terminal executable, for example PowerShell 7:
 
-## Keyboard
-
-- Ctrl + `P` — quick open file
-- Ctrl + `F` — find in editor / search workspace
-- Ctrl + Shift + `F` — search across the project
-- Ctrl + Shift + `P` — command palette
-- Ctrl + `B` — pin/auto-hide Explorer
-- Ctrl + `` ` `` — terminal
-- Terminal divider: ↑ / ↓ resize, Home / End choose minimum / maximum, Enter toggles maximize
-
-Full walkthrough: [docs/USERGUIDE.md](docs/USERGUIDE.md).
-
-## Project structure
-
-```text
-src/main/       Electron process, Git, terminal, trust and filesystem services
-src/preload/    typed and allowlisted IPC bridge
-src/renderer/   React UI, editor and visual Git workflows
-src/shared/     shared types and graph layout
-tests/          parser, Git integration, security and recovery tests
+```powershell
+$env:LUMA_SHELL = 'C:\Program Files\PowerShell\7\pwsh.exe'
+npm run dev
 ```
 
-## Reporting problems
+Packaged builds use the bundled MinGit executable. Developers can set `LUMA_GIT` to test another `git.exe` explicitly.
 
-- Security issue: follow [SECURITY.md](SECURITY.md); do not open a public exploit report.
-- Bug or feature proposal: open a GitHub issue with OS, display server, Git version, reproduction steps and logs with secrets removed.
-- Quick feedback or questions: ping the author on Telegram — [@upsetsay](https://t.me/upsetsay).
-- Contribution: read [CONTRIBUTING.md](CONTRIBUTING.md).
-- Changes: see [CHANGELOG.md](CHANGELOG.md).
+A workspace must be explicitly trusted before the integrated terminal or project tasks can run.
+
+## Security
+
+- Electron context isolation remains enabled and Node integration remains disabled in the renderer.
+- Filesystem operations are constrained to the opened workspace.
+- MinGit is downloaded from the official Git for Windows release and checked against a pinned SHA-256 digest before packaging.
+- Updates open the repository release page; the Windows port does not execute a downloaded shell script.
+- Do not commit tokens, `.env` files, local paths, or private repository data.
+
+Third-party software and source links are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Contributing
+
+Keep changes focused, add tests for platform decisions, and verify documented commands before updating user-facing status. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE)
-
-## Screenshots
-
-**Start** — open any directory, or jump back into a recent one. Luma is an editor first; Git initializes when you ask for it.
-![Start screen](docs/screenshots/login.png)
-
-**Code** — the editor: tabs, per-file Reload / Save / History / Stage, and a status line with position, indent and encoding. This is where most of the time goes.
-![Code](docs/screenshots/code.png)
-
-**Changes** — the working tree and the commit container: stage with + or by dragging a file in, write the message, commit or stash.
-![Changes](docs/screenshots/changes.png)
-
-**History — Lanes** — the commit list with ordinals, authors, tags and branch refs. ↑ ↓ navigate, Enter opens a commit.
-![History lanes](docs/screenshots/history_lanes.png)
-
-**History — Orbit** — the same repository as a flat, Obsidian-style web: nodes never overlap, hovering traces the branch while the rest of the web fades, clicking a commit opens its diff and rollback actions.
-![History orbit](docs/screenshots/history_orbit.png)
-
-**GitHub** — connect a fine-grained token (validated with GitHub, encrypted via Electron safeStorage, never written into remotes or logs), then clone and open repositories without leaving Luma.
-![GitHub](docs/screenshots/GitHub.png)
-
-**Tools** — workspace trust, detected project tasks, a read-only Git operation preview and workspace snapshots.
-![Tools](docs/screenshots/Tools.png)
-
-**Rescue** — every move HEAD ever made; here a fresh clone and the first pull. Any moment is one click away.
-![Rescue](docs/screenshots/rescue.png)
-
-**Stack** — the runtimes actually installed on the machine (Java and C# are missing here) and the project manifest that was detected.
-![Stack](docs/screenshots/stack.png)
-
-**Settings** — editor, Git behavior, themes, interface sounds and the anonymous update check. This install runs 0.2.0.
-![Settings](docs/screenshots/setup.png)
+MIT. See [LICENSE](LICENSE).

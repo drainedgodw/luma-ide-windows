@@ -36,16 +36,19 @@ for (const warning of warnings) {
 }
 
 if (failures.length > 0) {
+  const resetCommand =
+    process.platform === 'win32'
+      ? '  Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue\n  npm ci'
+      : '  rm -rf node_modules\n  npm ci';
   console.error('\n[Luma install] Required runtime dependencies are incomplete:');
   for (const failure of failures) console.error(`  - ${failure}`);
   console.error(`
 Use Node 22 and make sure ELECTRON_SKIP_BINARY_DOWNLOAD is not set.
-With npm 12, Luma's reviewed install-script allowlist should run automatically.
-If this checkout predates that allowlist, update it first and reinstall:
+Luma's reviewed install-script allowlist should run automatically.
+Update the checkout and reinstall dependencies:
 
   git pull --ff-only
-  rm -rf node_modules
-  npm ci
+${resetCommand}
 
 Do not download or edit files inside node_modules manually.
 `);

@@ -1,10 +1,8 @@
-import { app, ipcMain } from 'electron';
-import { spawn } from 'node:child_process';
+import { app, ipcMain, shell } from 'electron';
+import { windowsDownloadPage } from './platform/windowsUpdate';
 
-// Anonymous update check: one static file over plain HTTPS.
-// No account, no token, no machine id — everyone gets the same bytes.
-const VERSION_URL = 'https://raw.githubusercontent.com/drainedgodw/Luma/main/update.json';
-const INSTALLER_URL = 'https://raw.githubusercontent.com/drainedgodw/Luma/main/install.sh';
+const VERSION_URL =
+  'https://raw.githubusercontent.com/drainedgodw/luma-ide-windows/main/update.json';
 
 function newerThan(latest: string, current: string): boolean {
   const a = latest.split('.').map(Number);
@@ -39,22 +37,16 @@ export function registerUpdateIpc(): void {
       return { ok: false, error: { message: (error as Error).message, stderr: '' } };
     }
   });
-  ipcMain.handle('update:run', (_event, channel: string) => {
-    if (channel !== 'release' && channel !== 'nightly')
+  ipcMain.handle('update:run', async (_event, channel: string) => {
+    const downloadPage = windowsDownloadPage(channel);
+    if (!downloadPage) {
       return { ok: false, error: { message: 'Unknown update channel', stderr: '' } };
-    // the installer verifies checksums and cosign, then swaps the app atomically
-    const child = spawn(
-      'bash',
-      ['-c', `curl -fsSL ${INSTALLER_URL} | bash -s -- --${channel}`],
-      { detached: true, stdio: 'ignore' }
-    );
-    child.on('exit', (code) => {
-      if (code === 0) {
-        app.relaunch();
-        app.exit(0);
-      }
-    });
-    child.unref();
-    return { ok: true, data: 'updating' };
+    }
+    try {
+      await shell.openExternal(downloadPage);
+      return { ok: true, data: 'download-page-opened' };
+    } catch (error) {
+      return { ok: false, error: { message: (error as Error).message, stderr: '' } };
+    }
   });
 }

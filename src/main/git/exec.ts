@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createGitEnvironment, resolveGitExecutable } from '../platform/gitExecutable';
 
 export interface RunResult {
   code: number;
@@ -39,9 +40,10 @@ function runGitRaw(
   extraEnv?: Record<string, string>
 ): Promise<RunResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn('git', ['-c', 'core.quotepath=false', ...args], {
+    const executable = resolveGitExecutable();
+    const child = spawn(executable, ['-c', 'core.quotepath=false', ...args], {
       cwd: repo,
-      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', ...extraEnv },
+      env: createGitEnvironment(executable, process.env, extraEnv),
     });
     let stdout = '';
     let stderr = '';

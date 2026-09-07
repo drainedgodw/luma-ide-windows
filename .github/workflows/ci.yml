@@ -1,0 +1,78 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-package:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    env:
+      npm_config_msvs_version: '2022'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Configure Python for node-gyp
+        shell: pwsh
+        run: |
+          "npm_config_python=$env:pythonLocation\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check
+        run: npm run typecheck
+      - name: Run tests
+        run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Fetch verified MinGit runtime
+        shell: pwsh
+        run: ./scripts/fetch-mingit.ps1
+      - name: Package Windows x64
+        run: npx electron-builder --win --x64 --publish never
+      - name: Verify packaged runtime
+        shell: pwsh
+        run: |
+          $requiredFiles = @(
+            'dist/win-unpacked/Luma.exe',
+            'dist/win-unpacked/resources/app.asar',
+            'dist/win-unpacked/resources/git/cmd/git.exe',
+            'dist/win-unpacked/resources/THIRD_PARTY_NOTICES.md'
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Missing packaged runtime file: $file"
+            }
+          }
+          $nodePtyBinaries = @(Get-ChildItem 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty' -Filter '*.node' -File -Recurse)
+          if ($nodePtyBinaries.Count -eq 0) {
+            throw 'The packaged node-pty native binary is missing.'
+          }
+          & 'dist/win-unpacked/resources/git/cmd/git.exe' --version
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The packaged MinGit executable failed its version check.'
+          }
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: luma-windows-x64
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/*.yml
+          if-no-files-found: error
+          retention-days: 7

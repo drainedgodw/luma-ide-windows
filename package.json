@@ -2,12 +2,12 @@
   "name": "luma",
   "productName": "Luma",
   "version": "0.2.0",
-  "description": "Luma — a visual Git-first IDE for Linux. See your history, stage by drag & drop, resolve conflicts visually.",
+  "description": "Luma — a visual Git-first IDE for Windows.",
   "main": "out/main/index.js",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/drainedgodw/Luma.git"
+    "url": "https://github.com/drainedgodw/luma-ide-windows.git"
   },
   "author": "Luma contributors",
   "engines": {
@@ -27,10 +27,13 @@
     "build": "electron-vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "npm run typecheck && npm run test",
+    "fetch:mingit": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-mingit.ps1",
     "prestart": "node scripts/verify-install.cjs",
     "start": "electron-vite preview",
-    "dist": "electron-vite build && electron-builder --linux",
-    "predist": "node scripts/verify-install.cjs && npm run typecheck && npm run test"
+    "predist": "npm run fetch:mingit && node scripts/verify-install.cjs && npm run check",
+    "dist": "electron-vite build && electron-builder --win --x64",
+    "dist:win": "npm run dist"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",
