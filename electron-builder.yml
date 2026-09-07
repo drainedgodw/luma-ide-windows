@@ -2,21 +2,30 @@ appId: dev.luma.ide
 productName: Luma
 directories:
   output: dist
+  buildResources: build
 files:
   - out/**/*
   - package.json
-linux:
-  executableName: luma
-  target:
-    - AppImage
-    - tar.gz
-  category: Development
+win:
+  executableName: Luma
   icon: build/icon.png
-  desktop:
-    Name: Luma
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Luma
 electronDownload:
   mirror: https://github.com/electron/electron/releases/download/
-npmRebuild: false
+npmRebuild: true
 asar: true
 asarUnpack:
   - node_modules/node-pty/**

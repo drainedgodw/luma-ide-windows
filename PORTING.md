@@ -1,12 +1,19 @@
 # Windows port foundation
 
-The first development slice keeps the Linux product behavior while replacing platform assumptions deliberately.
+The Windows edition preserves Luma's product behavior while replacing operating-system assumptions deliberately. The Linux repository remains unchanged.
 
 ## Initial scope
 
-- Build and package on Windows x64.
-- Resolve PowerShell safely for the integrated terminal.
-- Disable the shell-based Linux updater until a native Windows update path exists.
-- Exercise type checks and tests on a Windows CI runner.
+- [x] Import the Luma 0.2.0 source snapshot and binary assets.
+- [x] Add a testable Windows terminal profile resolver.
+- [x] Replace the Bash updater with a safe Windows release-page flow.
+- [x] Add Windows x64 packaging and CI definitions.
+- [ ] Pass type checks, unit tests, application build, and packaging on a Windows runner.
+- [ ] Smoke-test the installer, portable executable, integrated terminal, Git operations, and workspace trust on Windows 10 and 11.
 
-Implementation changes will stay on `feat/windows-foundation` until the imported source builds and tests on Windows.
+## Deliberate constraints
+
+- PowerShell is the default integrated shell. `LUMA_SHELL` can override the executable.
+- The initial updater opens a verified GitHub release page instead of executing downloaded code.
+- The first packages target Windows x64 only; arm64 support requires a separate verified build path.
+- A stable release will not be announced until CI and manual smoke checks pass.
