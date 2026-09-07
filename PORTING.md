@@ -8,7 +8,7 @@ The Windows edition preserves Luma's product behavior while replacing operating-
 - [x] Add a testable Windows terminal profile resolver.
 - [x] Replace the Bash updater with a safe Windows release-page flow.
 - [x] Add Windows x64 packaging and CI definitions.
-- [ ] Pass type checks, unit tests, application build, and packaging on a Windows runner.
+- [x] Pass type checks, 37 unit tests, the application build, native-module rebuild, and packaging on a Windows 2022 runner.
 - [ ] Smoke-test the installer, portable executable, integrated terminal, Git operations, and workspace trust on Windows 10 and 11.
 
 ## Deliberate constraints
