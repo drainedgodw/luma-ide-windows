@@ -5,16 +5,20 @@ on:
     branches: [main]
     paths:
       - .github/workflows/bootstrap-windows-repository.yml
+  create:
 
 permissions:
   contents: write
 
 jobs:
   import-source:
+    if: github.event_name == 'push' || github.ref_type == 'branch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Import the Luma source snapshot
         shell: bash
         run: |
