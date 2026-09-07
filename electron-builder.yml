@@ -1,0 +1,22 @@
+appId: dev.luma.ide
+productName: Luma
+directories:
+  output: dist
+files:
+  - out/**/*
+  - package.json
+linux:
+  executableName: luma
+  target:
+    - AppImage
+    - tar.gz
+  category: Development
+  icon: build/icon.png
+  desktop:
+    Name: Luma
+electronDownload:
+  mirror: https://github.com/electron/electron/releases/download/
+npmRebuild: false
+asar: true
+asarUnpack:
+  - node_modules/node-pty/**
