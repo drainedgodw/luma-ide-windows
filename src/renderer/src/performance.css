@@ -1,0 +1,246 @@
+/*
+ * Interaction-only performance helpers. These rules preserve the original
+ * Liquid Glass blur, opacity, saturation and colours from theme.css.
+ * There are no idle timers, render loops or visual theme overrides here.
+ */
+
+:root {
+  --motion-spring: cubic-bezier(.22, 1, .36, 1);
+  --motion-soft: cubic-bezier(.2, .8, .2, 1);
+}
+
+.term-panel {
+  contain: layout paint style;
+}
+
+/* History can contain hundreds of cards. Chromium may skip rasterising cards
+ * that are outside the viewport while preserving the complete graph. */
+section.glass > header + .overflow-auto > .relative > button.absolute {
+  content-visibility: auto;
+  contain: layout paint style;
+  contain-intrinsic-size: auto 56px;
+}
+
+/* Cards inside scrolling lists must not carry their own backdrop-filter:
+ * every blur repaints while content moves behind it, which is the main
+ * source of wheel-scroll jank on Wayland. The already-blurred glass parent
+ * provides the frosted look; cards get a cheap translucent fill instead. */
+.overflow-y-auto .glass-soft:not(.rescue-row),
+.overflow-auto .glass-soft:not(.rescue-row) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(255, 255, 255, .035);
+}
+
+html[data-theme='liquid'] .overflow-y-auto .glass-soft:not(.rescue-row),
+html[data-theme='liquid'] .overflow-auto .glass-soft:not(.rescue-row) {
+  background: rgba(10, 14, 24, .34);
+  border-color: rgba(255, 255, 255, .16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+/* Rescue has only a short reflog. Keeping every row ready and letting the
+ * already-blurred parent provide the glass avoids repainting 30 nested blurs
+ * while the list moves. */
+.rescue-row {
+  content-visibility: visible;
+  contain: layout paint style;
+  background: rgba(255, 255, 255, .035);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme='liquid'] .rescue-row {
+  background: rgba(10, 14, 24, .34);
+  border-color: rgba(255, 255, 255, .16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+.overflow-auto,
+.overflow-y-auto {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Keep precise touchpad scrolling on Chromium's compositor. */
+.cm-scroller,
+[data-smooth-scroll='always'] {
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
+
+/* All common controls use explicit compositor-friendly properties, never all. */
+button {
+  transition-property: transform, opacity, color, background-color, border-color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: var(--motion-soft);
+}
+
+button:active {
+  transform: scale(.975);
+}
+
+.view-surface {
+  animation: view-surface-in 260ms var(--motion-spring) both;
+  transform-origin: 50% 50%;
+}
+
+@keyframes view-surface-in {
+  from { opacity: .72; transform: translate3d(0, 7px, 0) scale(.997); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Panel only chooses the mode. Pinned Explorer participates in layout; auto
+ * Explorer rolls fully in and out over the workspace without reflowing it. */
+.explorer-pinned {
+  width: 240px;
+  min-width: 240px;
+  height: 100%;
+}
+
+nav[aria-label='Primary workspace'] {
+  position: relative;
+  z-index: 56;
+}
+
+.explorer-flyout {
+  position: fixed;
+  left: 88px;
+  top: 72px;
+  bottom: 12px;
+  z-index: 55;
+  width: 240px;
+  pointer-events: none;
+}
+
+.explorer-flyout > .glass {
+  transform: translate3d(-252px, 0, 0);
+  transform-origin: left center;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 420ms var(--motion-spring),
+    opacity 100ms linear,
+    visibility 0s linear 420ms;
+}
+
+.explorer-flyout[data-awake='true'] {
+  pointer-events: auto;
+}
+
+.explorer-flyout[data-awake='true'] > .glass {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform 420ms var(--motion-spring),
+    opacity 120ms linear 70ms,
+    visibility 0s linear;
+}
+
+/* Wake from the full-height line immediately to the RIGHT of the nav rail. */
+.explorer-wake-zone {
+  position: fixed;
+  left: 76px;
+  top: 72px;
+  bottom: 12px;
+  z-index: 60;
+  width: 12px;
+}
+
+.explorer-wake-handle {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .42) 12%, rgba(196, 181, 253, .52) 50%, rgba(255, 255, 255, .42) 88%, transparent);
+  box-shadow: 0 0 16px rgba(196, 181, 253, .20);
+  opacity: .32;
+  transition: opacity 180ms ease, width 280ms var(--motion-spring);
+}
+
+.explorer-wake-zone:hover .explorer-wake-handle {
+  width: 5px;
+  opacity: .9;
+}
+
+/* Welcome keeps the original open layout in Cosmos. Liquid adds only the
+ * full-window edge frame: no bright card is placed behind the content. */
+.welcome-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.welcome-surface {
+  min-height: 0;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background: transparent;
+}
+
+html[data-theme='liquid'] .welcome-surface {
+  border-color: rgba(255, 255, 255, .20);
+  background: rgba(10, 14, 24, .30);
+  backdrop-filter: blur(32px) saturate(1.5);
+  -webkit-backdrop-filter: blur(32px) saturate(1.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .20),
+    inset 0 -1px 0 rgba(255, 255, 255, .08),
+    0 18px 60px rgba(0, 0, 0, .20);
+}
+
+.welcome-logo {
+  filter: drop-shadow(0 0 12px rgba(210, 220, 255, .32));
+}
+
+html[data-theme='liquid'] .welcome-logo {
+  filter: brightness(0) saturate(100%);
+}
+
+.welcome-recents {
+  max-height: min(260px, 36vh);
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+html[data-theme='liquid'] .welcome-recents {
+  border-color: rgba(255, 255, 255, .16);
+  background: rgba(10, 14, 24, .22);
+}
+
+.welcome-recent-row {
+  border: 1px solid transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.welcome-recent-row:hover,
+.welcome-recent-row[data-selected='true'] {
+  border-color: rgba(196, 181, 253, .28);
+  background: rgba(196, 181, 253, .10);
+}
+
+.welcome-recent-row:active {
+  transform: scale(.992);
+}
+
+.reduce-motion .view-surface,
+.reduce-motion .welcome-surface {
+  animation: none !important;
+}
+
+.reduce-motion .explorer-flyout > .glass,
+.reduce-motion .explorer-wake-handle {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}

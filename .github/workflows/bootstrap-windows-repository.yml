@@ -5,14 +5,14 @@ on:
     branches: [main]
     paths:
       - .github/workflows/bootstrap-windows-repository.yml
-  create:
+  pull_request:
+    types: [opened, synchronize]
 
 permissions:
   contents: write
 
 jobs:
   import-source:
-    if: github.event_name == 'push' || github.ref_type == 'branch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,9 +26,8 @@ jobs:
           git clone --depth 1 https://github.com/drainedgodw/Luma.git "$source_dir"
           rsync -a --delete \
             --exclude='.git' \
-            --exclude='.github/workflows/bootstrap-windows-repository.yml' \
+            --exclude='.github/workflows/' \
             "$source_dir/" ./
-          rm -f .github/workflows/bootstrap-windows-repository.yml
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
