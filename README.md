@@ -18,7 +18,7 @@ Requirements:
 - Windows 10 or 11 x64
 - [Node.js 22.20](https://nodejs.org/) and npm 10 or newer
 - [Git for Windows](https://git-scm.com/download/win)
-- Visual Studio Build Tools with the **Desktop development with C++** workload if `node-pty` needs a local rebuild
+- Visual Studio 2022 Build Tools with the **Desktop development with C++** workload if `node-pty` needs a local rebuild
 
 ```powershell
 git clone https://github.com/drainedgodw/luma-ide-windows.git
