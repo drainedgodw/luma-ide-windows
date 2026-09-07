@@ -8,6 +8,7 @@ import { registerIntelligenceIpc } from './intelligenceIpc';
 import { registerUpdateIpc } from './update';
 import { getWallpaper } from './wallpaper';
 
+if (process.platform === 'win32') app.setAppUserModelId('dev.luma.ide');
 app.commandLine.appendSwitch('enable-smooth-scrolling');
 let win: BrowserWindow | null = null;
 function createWindow() {
