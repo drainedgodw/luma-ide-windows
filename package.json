@@ -28,9 +28,10 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check": "npm run typecheck && npm run test",
+    "fetch:mingit": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-mingit.ps1",
     "prestart": "node scripts/verify-install.cjs",
     "start": "electron-vite preview",
-    "predist": "node scripts/verify-install.cjs && npm run check",
+    "predist": "npm run fetch:mingit && node scripts/verify-install.cjs && npm run check",
     "dist": "electron-vite build && electron-builder --win --x64",
     "dist:win": "npm run dist"
   },

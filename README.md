@@ -2,18 +2,31 @@
 
 Luma is a visual, Git-first desktop IDE. This repository is the Windows edition, split from the original Linux codebase so platform behavior, packaging, and releases can evolve independently.
 
-> **Development status:** the Windows port is in active development. There is no verified stable Windows installer yet. The first milestone is tracked in [PORTING.md](PORTING.md).
+> **Preview status:** automated Windows packaging passes, but manual Windows 10/11 smoke testing is still pending. The download below is an unsigned preview, not a stable release.
+
+## Download for Windows
+
+[**Download Luma installer for Windows 10/11 x64**](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/Luma-Windows-Setup-x64.exe)
+
+The installer is self-contained. It includes the Electron runtime, Luma application files, production dependencies, the native terminal module, and verified MinGit for Git operations. You do **not** need to install Node.js, npm, Python, Visual Studio, or Git separately to run the installed application.
+
+- [Portable x64 executable](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/Luma-Windows-Portable-x64.exe)
+- [SHA-256 checksums](https://github.com/drainedgodw/luma-ide-windows/releases/download/windows-preview/SHA256SUMS.txt)
+- [Preview release notes](https://github.com/drainedgodw/luma-ide-windows/releases/tag/windows-preview)
+
+Because this preview is not code-signed yet, Microsoft Defender SmartScreen may show a warning. Verify the checksum before running it. The current milestone and remaining manual checks are tracked in [PORTING.md](PORTING.md).
 
 ## First milestone
 
 - Native Windows x64 installer and portable package.
 - Integrated PowerShell terminal with workspace-trust protection.
+- Bundled, checksum-verified MinGit runtime.
 - Visual editing, search, Git history, staging, conflict tools, and GitHub workflows retained from Luma 0.2.0.
-- Windows CI for type checks, tests, renderer builds, and packaging.
+- Windows CI for type checks, tests, renderer builds, runtime verification, and packaging.
 
 ## Development setup
 
-Requirements:
+Requirements for source development only:
 
 - Windows 10 or 11 x64
 - [Node.js 22.20](https://nodejs.org/) and npm 10 or newer
@@ -35,22 +48,24 @@ npm run check
 npm run build
 ```
 
-Create the Windows x64 installer and portable executable:
+Create the self-contained Windows x64 installer and portable executable:
 
 ```powershell
 npm run dist:win
 ```
 
-Artifacts are written to `dist/`.
+The build downloads the pinned MinGit archive, verifies its SHA-256 checksum, and writes packages to `dist/`.
 
-## Terminal selection
+## Runtime overrides
 
-Luma uses Windows PowerShell by default. Set `LUMA_SHELL` before starting the app to use another executable, for example PowerShell 7:
+Luma uses Windows PowerShell by default. Set `LUMA_SHELL` before starting the app to use another terminal executable, for example PowerShell 7:
 
 ```powershell
 $env:LUMA_SHELL = 'C:\Program Files\PowerShell\7\pwsh.exe'
 npm run dev
 ```
+
+Packaged builds use the bundled MinGit executable. Developers can set `LUMA_GIT` to test another `git.exe` explicitly.
 
 A workspace must be explicitly trusted before the integrated terminal or project tasks can run.
 
@@ -58,8 +73,11 @@ A workspace must be explicitly trusted before the integrated terminal or project
 
 - Electron context isolation remains enabled and Node integration remains disabled in the renderer.
 - Filesystem operations are constrained to the opened workspace.
+- MinGit is downloaded from the official Git for Windows release and checked against a pinned SHA-256 digest before packaging.
 - Updates open the repository release page; the Windows port does not execute a downloaded shell script.
 - Do not commit tokens, `.env` files, local paths, or private repository data.
+
+Third-party software and source links are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Contributing
 

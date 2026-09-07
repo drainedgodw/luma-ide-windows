@@ -6,6 +6,13 @@ directories:
 files:
   - out/**/*
   - package.json
+extraResources:
+  - from: vendor/mingit
+    to: git
+    filter:
+      - '**/*'
+  - from: THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
 win:
   executableName: Luma
   icon: build/icon.png
