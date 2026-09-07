@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { resolveExistingRepoPath, resolveRepoPath } from '../src/main/pathGuard';
@@ -22,7 +22,7 @@ describe('repository path guard', () => {
   it('allows paths inside the repository', async () => {
     const { repo } = await tree();
     expect(resolveRepoPath(repo, 'src/file.ts')).toBe(join(repo, 'src/file.ts'));
-    expect(await resolveExistingRepoPath(repo, 'ok.txt')).toBe(join(repo, 'ok.txt'));
+    expect(await resolveExistingRepoPath(repo, 'ok.txt')).toBe(await realpath(join(repo, 'ok.txt')));
   });
   it('rejects traversal and absolute paths', async () => {
     const { repo } = await tree();
