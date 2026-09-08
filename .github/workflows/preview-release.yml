@@ -11,6 +11,8 @@ on:
       - build/**
       - package.json
       - package-lock.json
+      - update.json
+      - CHANGELOG.md
       - electron-builder.yml
       - THIRD_PARTY_NOTICES.md
       - README.md
@@ -102,13 +104,15 @@ jobs:
           }
           $checksums | Set-Content 'release/SHA256SUMS.txt' -Encoding ascii
           @"
-          # Luma for Windows — Preview
+          # Luma 0.3.0 — Fix Stack bug (Windows Preview)
 
           Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.
 
+          Version 0.3.0 fixes the in-app Stack installer with one-click install/remove actions, safe installed-state detection and cross-platform package-manager commands.
+
           The installer includes the Electron runtime, Luma application files, production Node dependencies, the native node-pty module, and verified MinGit 2.55.0.5 for Git operations. Node.js, npm, Python, Visual Studio, and a separate Git installation are not required to run the installed application.
 
-          This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. Manual Windows 10/11 smoke testing is still pending; this is not a stable release.
+          This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. The application has launched successfully on Windows; manual Stack install/remove smoke testing remains pending.
           "@ | Set-Content 'release-notes.md' -Encoding utf8
       - name: Publish rolling preview release
         shell: pwsh
@@ -116,6 +120,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = 'windows-preview'
+          $title = 'Luma 0.3.0 — Fix Stack bug (Windows Preview)'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag --force $tag $env:GITHUB_SHA
@@ -131,9 +136,9 @@ jobs:
           if ($releaseExists) {
             gh release upload $tag @assets --clobber --repo $env:GITHUB_REPOSITORY
             if ($LASTEXITCODE -ne 0) { throw 'Failed to upload preview release assets.' }
-            gh release edit $tag --title 'Luma for Windows — Preview' --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
+            gh release edit $tag --title $title --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
             if ($LASTEXITCODE -ne 0) { throw 'Failed to update the preview release.' }
           } else {
-            gh release create $tag @assets --verify-tag --title 'Luma for Windows — Preview' --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
+            gh release create $tag @assets --verify-tag --title $title --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
             if ($LASTEXITCODE -ne 0) { throw 'Failed to create the preview release.' }
           }
