@@ -5,6 +5,7 @@ on:
     branches: [feat/windows-foundation]
     paths:
       - .github/workflows/prepare-0.3.0.yml
+      - scripts/prepare-0.3.0.mjs
 
 permissions:
   contents: write
@@ -15,97 +16,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Synchronize release metadata
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          version = '0.3.0'
-          for filename in ('package.json', 'package-lock.json', 'update.json'):
-              path = Path(filename)
-              data = json.loads(path.read_text())
-              data['version'] = version
-              if filename == 'package-lock.json':
-                  data['packages']['']['version'] = version
-              path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
-
-          settings_path = Path('src/renderer/src/views/SettingsView.tsx')
-          settings = settings_path.read_text()
-          old_about = 'Version 0.2.0 · MIT license'
-          if settings.count(old_about) != 1:
-              raise SystemExit('Expected one Settings version label')
-          settings_path.write_text(settings.replace(old_about, 'Version 0.3.0 · MIT license'))
-
-          changelog_path = Path('CHANGELOG.md')
-          changelog = changelog_path.read_text()
-          heading = '## [0.3.0] - 2026-09-08'
-          if heading not in changelog:
-              marker = '## [0.2.0] - 2026-09-06'
-              if changelog.count(marker) != 1:
-                  raise SystemExit('Expected one 0.2.0 changelog marker')
-              entry = '''## [0.3.0] - 2026-09-08
-
-### Fixed
-
-- Rebuilt Languages & Ecosystem (Stack) so supported dependencies have one-click install and remove actions.
-- Added installed-state refresh, removal confirmation and visible command output on Linux and Windows.
-- Made package-manager execution platform-aware for npm, pnpm, Yarn, Bun, Python, Cargo, Go and .NET.
-
-### Security
-
-- Require Workspace Trust for Stack mutations and accept only shared-catalog package identifiers.
-- Prevent renderer input from becoming a shell command and avoid executing repository-local Python during status detection.
-
-### Known limitations
-
-- Java and C/C++ entries remain manual until a deterministic manifest mutation path is available.
-
-'''
-              changelog = changelog.replace(marker, entry + marker, 1)
-              changelog_path.write_text(changelog)
-
-          readme_path = Path('README.md')
-          readme = readme_path.read_text()
-          old_status = '> **Preview status:** automated Windows packaging passes, but manual Windows 10/11 smoke testing is still pending. The download below is an unsigned preview, not a stable release.'
-          new_status = '> **Preview status:** automated Windows packaging passes and the application has launched successfully on Windows. Manual Stack install/remove smoke testing is still pending. The download below is unsigned and not yet a stable release.'
-          if readme.count(old_status) != 1:
-              raise SystemExit('Expected one Windows preview status')
-          readme = readme.replace(old_status, new_status)
-          intro = 'Luma is a visual, Git-first desktop IDE. This repository is the Windows edition, split from the original Linux codebase so platform behavior, packaging, and releases can evolve independently.\n'
-          release_line = '\n**Current update: Luma 0.3.0 — Fix Stack bug.**\n'
-          if release_line.strip() not in readme:
-              if readme.count(intro) != 1:
-                  raise SystemExit('Expected one Windows README intro')
-              readme = readme.replace(intro, intro + release_line, 1)
-          milestone = '- Windows CI for type checks, tests, renderer builds, runtime verification, and packaging.'
-          stack_bullet = '- Reversible in-app Stack package actions with installed-state detection and Workspace Trust protection.'
-          if stack_bullet not in readme:
-              if readme.count(milestone) != 1:
-                  raise SystemExit('Expected one Windows milestone marker')
-              readme = readme.replace(milestone, milestone + '\n' + stack_bullet, 1)
-          readme_path.write_text(readme)
-
-          workflow_path = Path('.github/workflows/preview-release.yml')
-          workflow = workflow_path.read_text()
-          replacements = {
-              '# Luma for Windows — Preview': '# Luma 0.3.0 — Fix Stack bug (Windows Preview)',
-              "--title 'Luma for Windows — Preview'": "--title 'Luma 0.3.0 — Fix Stack bug (Windows Preview)'",
-              'This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. Manual Windows 10/11 smoke testing is still pending; this is not a stable release.': 'This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. The application has launched successfully on Windows; manual Stack install/remove smoke testing remains pending.',
-          }
-          for old, new in replacements.items():
-              if old not in workflow:
-                  raise SystemExit(f'Missing preview workflow text: {old}')
-              workflow = workflow.replace(old, new)
-          marker = 'Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.\n'
-          stack_note = '\nVersion 0.3.0 fixes the in-app Stack installer with one-click install/remove actions, safe installed-state detection and cross-platform package-manager commands.\n'
-          if stack_note.strip() not in workflow:
-              if workflow.count(marker) != 1:
-                  raise SystemExit('Expected one release-notes commit marker')
-              workflow = workflow.replace(marker, marker + stack_note, 1)
-          workflow_path.write_text(workflow)
-          PY
+      - run: node scripts/prepare-0.3.0.mjs
       - name: Commit synchronized metadata
         shell: bash
         run: |
