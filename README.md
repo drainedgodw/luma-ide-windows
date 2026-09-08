@@ -2,7 +2,9 @@
 
 Luma is a visual, Git-first desktop IDE. This repository is the Windows edition, split from the original Linux codebase so platform behavior, packaging, and releases can evolve independently.
 
-> **Preview status:** automated Windows packaging passes, but manual Windows 10/11 smoke testing is still pending. The download below is an unsigned preview, not a stable release.
+**Current update: Luma 0.3.0 — Fix Stack bug.**
+
+> **Preview status:** automated Windows packaging passes and the application has launched successfully on Windows. Manual Stack install/remove smoke testing is still pending. The download below is unsigned and not yet a stable release.
 
 ## Download for Windows
 
@@ -23,6 +25,7 @@ Because this preview is not code-signed yet, Microsoft Defender SmartScreen may 
 - Bundled, checksum-verified MinGit runtime.
 - Visual editing, search, Git history, staging, conflict tools, and GitHub workflows retained from Luma 0.2.0.
 - Windows CI for type checks, tests, renderer builds, runtime verification, and packaging.
+- Reversible in-app Stack package actions with installed-state detection and Workspace Trust protection.
 
 ## Development setup
 
