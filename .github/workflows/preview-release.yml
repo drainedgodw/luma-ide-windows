@@ -50,6 +50,29 @@ jobs:
         run: npm ci
       - name: Validate source
         run: npm run check
+      - name: Verify Stack winget package IDs when available
+        shell: pwsh
+        run: |
+          $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+          if (-not $winget) {
+            Write-Warning 'winget is not present on the Windows Server runner; command plans remain covered by unit tests.'
+            exit 0
+          }
+          $ids = @(
+            'OpenJS.NodeJS.LTS',
+            'Python.Python.3.12',
+            'Rustlang.Rustup',
+            'GoLang.Go',
+            'EclipseAdoptium.Temurin.21.JDK',
+            'Apache.Maven',
+            'Microsoft.DotNet.SDK.8',
+            'LLVM.LLVM',
+            'Kitware.CMake'
+          )
+          foreach ($id in $ids) {
+            & $winget.Source show --id $id --exact --source winget --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) { throw "Unknown winget package ID: $id" }
+          }
       - name: Build application
         run: npm run build
       - name: Fetch verified MinGit runtime
@@ -72,14 +95,10 @@ jobs:
             'dist/win-unpacked/resources/THIRD_PARTY_NOTICES.md'
           )
           foreach ($file in $requiredFiles) {
-            if (-not (Test-Path $file -PathType Leaf)) {
-              throw "Missing packaged runtime file: $file"
-            }
+            if (-not (Test-Path $file -PathType Leaf)) { throw "Missing packaged runtime file: $file" }
           }
           $nodePtyBinaries = @(Get-ChildItem 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty' -Filter '*.node' -File -Recurse)
-          if ($nodePtyBinaries.Count -eq 0) {
-            throw 'The packaged node-pty native binary is missing.'
-          }
+          if ($nodePtyBinaries.Count -eq 0) { throw 'The packaged node-pty native binary is missing.' }
           & 'dist/win-unpacked/resources/git/cmd/git.exe' --version
           if ($LASTEXITCODE -ne 0) { throw 'The packaged MinGit executable failed its version check.' }
           & 'dist/win-unpacked/resources/node/node.exe' --version
@@ -93,18 +112,11 @@ jobs:
           $packages = @(Get-ChildItem dist -Filter '*.exe' -File)
           $installers = @($packages | Where-Object { $_.Name -match 'Setup' })
           $portablePackages = @($packages | Where-Object { $_.Name -notmatch 'Setup' })
-          if ($installers.Count -ne 1) {
-            throw "Expected one NSIS installer, found $($installers.Count): $($packages.Name -join ', ')"
-          }
-          if ($portablePackages.Count -ne 1) {
-            throw "Expected one portable executable, found $($portablePackages.Count): $($packages.Name -join ', ')"
-          }
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer, found $($installers.Count): $($packages.Name -join ', ')" }
+          if ($portablePackages.Count -ne 1) { throw "Expected one portable executable, found $($portablePackages.Count): $($packages.Name -join ', ')" }
           Copy-Item $installers[0].FullName 'release/Luma-Windows-Setup-x64.exe'
           Copy-Item $portablePackages[0].FullName 'release/Luma-Windows-Portable-x64.exe'
-          $releaseFiles = @(
-            Get-Item 'release/Luma-Windows-Setup-x64.exe'
-            Get-Item 'release/Luma-Windows-Portable-x64.exe'
-          )
+          $releaseFiles = @(Get-Item 'release/Luma-Windows-Setup-x64.exe'; Get-Item 'release/Luma-Windows-Portable-x64.exe')
           $checksums = foreach ($file in $releaseFiles) {
             $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($file.Name)"
@@ -115,13 +127,13 @@ jobs:
 
           Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.
 
-          Version 0.3.0 fixes the in-app Stack installer. JavaScript and TypeScript actions use bundled, verified Node.js 22.22.0 and npm, can initialize a minimal package.json, and support one-click install/remove without a system Node installation.
+          The original transparent Liquid Glass window, panel opacity, layout and architecture are restored. Settings now controls blur on the main panel, sidebars, History, Changes, terminal and other glass blocks from 0–64 px; the 32 px default matches the original fixed blur. The wallpaper itself is not blurred or dimmed.
 
-          The Liquid theme now uses an opaque Windows window plus a dimmed in-app wallpaper, preventing the desktop from washing out controls and text.
+          Stack can install or remove allowlisted Node.js, Python, Rust, Go, Java/Maven, .NET and C/C++ runtimes through exact winget package IDs. Runtime removal has a system-wide warning, every command is built in the main process with shell execution disabled, and Workspace Trust is required. Restart Luma after a runtime change so it inherits the new PATH.
 
-          The installer also includes the Electron runtime, Luma application files, production dependencies, the native node-pty module, and verified MinGit 2.55.0.5. Python, Rust, Go, Java and .NET Stack actions still require their respective runtimes.
+          JavaScript and TypeScript package actions use bundled, verified Node.js 22.22.0 and npm and can initialize a minimal package.json. Project package actions also support Python .venv, Cargo, Go and one unambiguous .csproj. Java and C/C++ framework/library mutation remains manual until a deterministic manifest path is implemented.
 
-          This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. Manual Stack install/remove smoke testing remains pending.
+          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen. Manual visual and runtime smoke testing remains pending.
           "@ | Set-Content 'release-notes.md' -Encoding utf8
       - name: Publish rolling preview release
         shell: pwsh
@@ -134,12 +146,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag --force $tag $env:GITHUB_SHA
           git push origin "refs/tags/$tag" --force
-
-          $assets = @(
-            'release/Luma-Windows-Setup-x64.exe',
-            'release/Luma-Windows-Portable-x64.exe',
-            'release/SHA256SUMS.txt'
-          )
+          $assets = @('release/Luma-Windows-Setup-x64.exe', 'release/Luma-Windows-Portable-x64.exe', 'release/SHA256SUMS.txt')
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           $releaseExists = $LASTEXITCODE -eq 0
           if ($releaseExists) {
