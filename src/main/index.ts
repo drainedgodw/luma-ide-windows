@@ -12,7 +12,6 @@ if (process.platform === 'win32') app.setAppUserModelId('dev.luma.ide');
 app.commandLine.appendSwitch('enable-smooth-scrolling');
 let win: BrowserWindow | null = null;
 function createWindow() {
-  const isWindows = process.platform === 'win32';
   win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -20,8 +19,8 @@ function createWindow() {
     minHeight: 600,
     show: false,
     frame: false,
-    transparent: !isWindows,
-    backgroundColor: isWindows ? '#070b14' : '#00000000',
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
