@@ -79,32 +79,3 @@ if (!readme.includes(stackBullet)) {
   readme = replaceOnce(readme, milestone, `${milestone}\n${stackBullet}`, 'Windows milestone');
 }
 write(readmePath, readme);
-
-const workflowPath = '.github/workflows/preview-release.yml';
-let workflow = read(workflowPath);
-if (!workflow.includes('# Luma for Windows — Preview')) {
-  throw new Error('Missing Windows preview heading');
-}
-workflow = workflow.replaceAll(
-  '# Luma for Windows — Preview',
-  '# Luma 0.3.0 — Fix Stack bug (Windows Preview)'
-);
-if (!workflow.includes("--title 'Luma for Windows — Preview'")) {
-  throw new Error('Missing Windows preview release title');
-}
-workflow = workflow.replaceAll(
-  "--title 'Luma for Windows — Preview'",
-  "--title 'Luma 0.3.0 — Fix Stack bug (Windows Preview)'"
-);
-workflow = replaceOnce(
-  workflow,
-  'This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. Manual Windows 10/11 smoke testing is still pending; this is not a stable release.',
-  'This preview is unsigned and may trigger a Microsoft Defender SmartScreen warning. The application has launched successfully on Windows; manual Stack install/remove smoke testing remains pending.',
-  'Windows preview limitation'
-);
-const commitMarker = 'Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.\n';
-const stackNote = '\nVersion 0.3.0 fixes the in-app Stack installer with one-click install/remove actions, safe installed-state detection and cross-platform package-manager commands.\n';
-if (!workflow.includes(stackNote.trim())) {
-  workflow = replaceOnce(workflow, commitMarker, commitMarker + stackNote, 'release commit marker');
-}
-write(workflowPath, workflow);
