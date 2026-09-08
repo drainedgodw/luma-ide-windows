@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   buildStackCommands,
+  ensureNodeProjectManifest,
   runStackToolAction,
   stackToolStatus,
   type NodePackageManager,
@@ -25,6 +26,20 @@ describe('Stack package actions', () => {
       args: ['/d', '/s', '/c', 'npm.cmd', 'install', 'react', 'react-dom'],
       display: 'npm install react react-dom',
     }]);
+  });
+  it('runs bundled npm directly through the bundled Node executable', () => {
+    expect(buildStackCommands(tool('javascript', 'Jest'), 'install', 'win32', {
+      nodeManager: 'npm',
+      nodeExecutable: 'C:\\Program Files\\Luma\\resources\\node\\node.exe',
+      nodePackageManagerCli: 'C:\\Program Files\\Luma\\resources\\node\\node_modules\\npm\\bin\\npm-cli.js',
+    })[0]).toEqual({
+      command: 'C:\\Program Files\\Luma\\resources\\node\\node.exe',
+      args: [
+        'C:\\Program Files\\Luma\\resources\\node\\node_modules\\npm\\bin\\npm-cli.js',
+        'install', '--save-dev', 'jest',
+      ],
+      display: 'npm install --save-dev jest',
+    });
   });
   it.each<[NodePackageManager, string[]]>([
     ['npm', ['remove', 'next']], ['pnpm', ['remove', 'next']],
@@ -60,6 +75,19 @@ describe('Stack package actions', () => {
   it('targets the selected .NET project explicitly', () => {
     expect(buildStackCommands(tool('csharp', 'Serilog'), 'uninstall', 'win32', { projectFile: 'Sample.csproj' })[0])
       .toMatchObject({ command: 'dotnet', args: ['remove', 'Sample.csproj', 'package', 'Serilog'] });
+  });
+  it('creates a minimal Node manifest once and ignores dependencies', async () => {
+    const repo = await mkdtemp(join(tmpdir(), 'Luma Sample '));
+    try {
+      await expect(ensureNodeProjectManifest(repo)).resolves.toBe(true);
+      await expect(ensureNodeProjectManifest(repo)).resolves.toBe(false);
+      const manifest = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8')) as Record<string, unknown>;
+      expect(manifest).toMatchObject({ version: '0.1.0', private: true });
+      expect(manifest.name).toMatch(/^[a-z0-9][a-z0-9._-]*$/);
+      expect(await readFile(join(repo, '.gitignore'), 'utf8')).toContain('node_modules/');
+    } finally {
+      await rm(repo, { recursive: true, force: true });
+    }
   });
   it('rejects package names that are not in the shared catalog', async () => {
     await expect(runStackToolAction('/tmp/project', 'install', 'typescript', 'React && rm -rf /'))

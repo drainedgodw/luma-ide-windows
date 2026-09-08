@@ -3,6 +3,7 @@ import {
   stackToolDefinition,
   stackToolKey,
   type StackToolAction,
+  type StackToolDefinition,
   type StackToolResult,
 } from '@shared/stackCatalog';
 import { LANGUAGE_PACKS, type LanguagePack } from '../languages';
@@ -72,13 +73,18 @@ export default function StoreView() {
           <span className="max-w-md truncate text-[10px] text-teal" title={report.manifests.join(', ')}>
             Detected: {report.manifests.join(', ')}
           </span>
-        ) : <span className="text-[10px] text-white/25">No project manifest detected</span>}
+        ) : <span className="text-[10px] text-white/35">No project manifest detected</span>}
         <button className="btn px-3 py-1 text-[11px]" disabled={loading || busy !== null} onClick={() => void refresh()}>
           {loading ? 'Checking…' : 'Refresh detection'}
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         <div className="mx-auto grid max-w-5xl gap-3">
+          {!loading && report?.manifests.length === 0 && (
+            <section className="rounded-xl border border-lilac/25 bg-black/30 p-3 text-[10px] leading-relaxed text-white/60">
+              This folder has no project manifest yet. A JavaScript or TypeScript install can safely create a minimal <code className="text-lilac">package.json</code> and ignore <code className="text-lilac">node_modules/</code>. Other ecosystems stay disabled until their project manifest and runtime are available.
+            </section>
+          )}
           {feedback && (
             <section className="glass-soft p-4">
               <div className="flex items-center gap-2 text-xs">
@@ -114,6 +120,9 @@ function LanguageRow({ pack, report, toolStatus, loading, open, toggle, busy, ru
   runAction: (action: StackToolAction, packId: string, name: string) => Promise<void>;
 }) {
   const runtime = report?.runtimes.find((item) => item.id === pack.runtimeId);
+  const bundledNode = pack.runtimeId === 'node';
+  const runtimeAvailable = Boolean(runtime?.available || bundledNode);
+  const runtimeLabel = runtime?.available ? runtime.version : bundledNode ? 'bundled Node.js 22' : 'runtime missing';
   const detected = report?.ecosystems[pack.id] ?? [];
   const hasAutomaticActions = [...pack.frameworks, ...pack.libraries].some((name) =>
     Boolean(stackToolDefinition(pack.id, name))
@@ -132,29 +141,30 @@ function LanguageRow({ pack, report, toolStatus, loading, open, toggle, busy, ru
             {detected.length > 0 && <span className="text-teal"> · in project: {detected.slice(0, 5).join(', ')}</span>}
           </div>
         </div>
-        <span className={`rounded-full border px-2 py-1 text-[9px] ${runtime?.available ? 'border-teal/25 bg-teal/8 text-teal' : 'border-amber/20 bg-amber/5 text-amber'}`}>
-          {runtime?.available ? runtime.version : 'runtime missing'}
+        <span className={`rounded-full border px-2 py-1 text-[9px] ${runtimeAvailable ? 'border-teal/25 bg-teal/8 text-teal' : 'border-amber/20 bg-amber/5 text-amber'}`}>
+          {runtimeLabel}
         </span>
         <span className={`text-white/35 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>
       {open && (
         <div className="border-t border-white/8 p-4">
-          <div className="mb-3 text-[10px] leading-relaxed text-white/40">
+          <div className="mb-3 text-[10px] leading-relaxed text-white/50">
             {pack.blurb} Actions below use an allowlisted package and the project package manager. Python packages use a project-local .venv.
           </div>
-          <InstallGroup label="Frameworks" names={pack.frameworks} packId={pack.id} toolStatus={toolStatus} loading={loading} busy={busy} runAction={runAction} />
-          <InstallGroup label="Libraries" names={pack.libraries} packId={pack.id} toolStatus={toolStatus} loading={loading} busy={busy} runAction={runAction} />
-          {!hasAutomaticActions && <div className="mt-2 text-[10px] text-white/30">{pack.name} does not have a safe, universal project package command yet.</div>}
+          <InstallGroup label="Frameworks" names={pack.frameworks} packId={pack.id} report={report} toolStatus={toolStatus} loading={loading} busy={busy} runAction={runAction} />
+          <InstallGroup label="Libraries" names={pack.libraries} packId={pack.id} report={report} toolStatus={toolStatus} loading={loading} busy={busy} runAction={runAction} />
+          {!hasAutomaticActions && <div className="mt-2 text-[10px] text-white/35">{pack.name} does not have a safe, universal project package command yet.</div>}
         </div>
       )}
     </article>
   );
 }
 
-function InstallGroup({ label, names, packId, toolStatus, loading, busy, runAction }: {
+function InstallGroup({ label, names, packId, report, toolStatus, loading, busy, runAction }: {
   label: string;
   names: string[];
   packId: string;
+  report: TechnologyReport | null;
   toolStatus: Record<string, boolean>;
   loading: boolean;
   busy: string | null;
@@ -162,30 +172,55 @@ function InstallGroup({ label, names, packId, toolStatus, loading, busy, runActi
 }) {
   return (
     <div className="mb-3">
-      <div className="mb-1.5 text-[9px] uppercase tracking-wider text-white/25">{label}</div>
+      <div className="mb-1.5 text-[9px] uppercase tracking-wider text-white/35">{label}</div>
       <div className="flex flex-wrap gap-2">
         {names.map((name) => {
           const key = stackToolKey(packId, name),
             definition = stackToolDefinition(packId, name),
             active = toolStatus[key] ?? false,
-            action: StackToolAction = active ? 'uninstall' : 'install';
+            action: StackToolAction = active ? 'uninstall' : 'install',
+            blocked = definition ? actionBlockReason(definition, report) : null,
+            initializesNode = action === 'install' && definition?.manager === 'node' && !report?.manifests.includes('package.json');
           return (
             <span key={name} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[10px] ${active ? 'border-teal/35 bg-teal/10 text-teal' : 'border-white/10 bg-white/3 text-white/70'}`}>
               {active && '✓ '}{name}
               {definition ? (
                 <button
-                  className={`rounded border px-1.5 py-0.5 text-[9px] disabled:opacity-40 ${active ? 'border-red-300/35 text-red-200 hover:bg-red-300/10' : 'border-lilac/40 text-lilac hover:bg-lilac/15'}`}
-                  disabled={loading || busy !== null}
-                  title={`${active ? 'Remove' : 'Install'} ${name} ${active ? 'from' : 'into'} this project`}
+                  className={`rounded border px-1.5 py-0.5 text-[9px] disabled:cursor-not-allowed disabled:opacity-40 ${active ? 'border-red-300/35 text-red-200 hover:bg-red-300/10' : 'border-lilac/40 text-lilac hover:bg-lilac/15'}`}
+                  disabled={loading || busy !== null || Boolean(blocked)}
+                  title={blocked ?? `${active ? 'Remove' : initializesNode ? 'Initialize package.json and install' : 'Install'} ${name} ${active ? 'from' : 'into'} this project`}
                   onClick={() => void runAction(action, packId, name)}
                 >
-                  {busy === key ? (active ? 'removing…' : 'installing…') : active ? 'remove' : 'install'}
+                  {busy === key ? (active ? 'removing…' : 'installing…') : active ? 'remove' : initializesNode ? 'init + install' : 'install'}
                 </button>
-              ) : <span className="text-[9px] text-white/25" title="No safe automatic project command is available">manual</span>}
+              ) : <span className="text-[9px] text-white/30" title="No safe automatic project command is available">manual</span>}
             </span>
           );
         })}
       </div>
     </div>
   );
+}
+
+function actionBlockReason(
+  definition: StackToolDefinition,
+  report: TechnologyReport | null
+): string | null {
+  if (!report) return 'Checking project requirements…';
+  if (definition.manager === 'node') return null;
+  const runtimeId = {
+    pip: 'python',
+    cargo: 'rust',
+    go: 'go',
+    dotnet: 'dotnet',
+  }[definition.manager];
+  const runtime = report.runtimes.find((item) => item.id === runtimeId);
+  if (!runtime?.available) return `${runtime?.label ?? runtimeId} runtime is required`;
+  if (definition.manager === 'cargo' && !report.manifests.includes('Cargo.toml'))
+    return 'Create Cargo.toml before changing Rust crates';
+  if (definition.manager === 'go' && !report.manifests.includes('go.mod'))
+    return 'Create go.mod before changing Go modules';
+  if (definition.manager === 'dotnet' && !report.manifests.some((name) => name.endsWith('.csproj')))
+    return 'Open a folder containing one .csproj project';
+  return null;
 }

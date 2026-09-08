@@ -3,6 +3,7 @@ out/
 dist/
 release/
 vendor/mingit/
+vendor/node/
 .cache/
 .luma/
 research/

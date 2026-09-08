@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { access, readFile, readdir, writeFile } from 'node:fs/promises';
-import { join, posix, win32 } from 'node:path';
+import { basename, join, posix, win32 } from 'node:path';
 import {
   STACK_TOOL_CATALOG,
   isStackToolInstalled,
@@ -10,12 +10,15 @@ import {
   type StackToolDefinition,
   type StackToolResult,
 } from '../shared/stackCatalog';
+import { findBundledNodeRuntime } from './platform/nodeRuntime';
 
 export type NodePackageManager = 'npm' | 'pnpm' | 'yarn' | 'bun';
 export interface StackCommand { command: string; args: string[]; display: string }
 export interface StackCommandOptions {
   comSpec?: string;
   nodeManager?: NodePackageManager;
+  nodeExecutable?: string;
+  nodePackageManagerCli?: string;
   projectFile?: string;
   pythonExecutable?: string;
 }
@@ -33,6 +36,13 @@ export function buildStackCommands(
       const manager = options.nodeManager ?? 'npm';
       const args = nodePackageArguments(manager, action, definition);
       const display = formatCommand(manager, args);
+      if (manager === 'npm' && options.nodeExecutable && options.nodePackageManagerCli) {
+        return [{
+          command: options.nodeExecutable,
+          args: [options.nodePackageManagerCli, ...args],
+          display,
+        }];
+      }
       if (platform === 'win32') {
         return [{
           command: options.comSpec?.trim() || 'cmd.exe',
@@ -89,10 +99,23 @@ export async function runStackToolAction(
   activeActions.add(operationKey);
   try {
     const options: StackCommandOptions = {};
+    let output = '';
     if (definition.manager === 'node') {
-      await requireFile(repo, 'package.json', 'Create package.json before adding Node packages');
+      if (action === 'install') {
+        const created = await ensureNodeProjectManifest(repo);
+        if (created) output += 'Created a minimal package.json and added node_modules/ to .gitignore.\n';
+      } else {
+        await requireFile(repo, 'package.json', 'No package.json exists, so there is nothing to remove');
+      }
       options.nodeManager = await detectNodePackageManager(repo);
       options.comSpec = process.env.ComSpec;
+      if (options.nodeManager === 'npm') {
+        const bundled = await findBundledNodeRuntime(undefined, platform);
+        if (bundled) {
+          options.nodeExecutable = bundled.nodeExecutable;
+          options.nodePackageManagerCli = bundled.npmCli;
+        }
+      }
     }
     if (definition.manager === 'cargo')
       await requireFile(repo, 'Cargo.toml', 'Create Cargo.toml before adding Rust crates');
@@ -118,7 +141,6 @@ export async function runStackToolAction(
     }
 
     const commands = [...preparation, ...buildStackCommands(definition, action, platform, options)];
-    let output = '';
     for (const command of commands) {
       const result = await runProcess(repo, command);
       output += `$ ${command.display}\n${result.output.trim()}\n`;
@@ -131,7 +153,7 @@ export async function runStackToolAction(
         };
       }
       if (definition.manager === 'pip' && command === preparation[0])
-        await ensureVirtualEnvironmentIgnored(repo);
+        await ensureIgnored(repo, '.venv/');
     }
     return {
       ok: true,
@@ -142,6 +164,30 @@ export async function runStackToolAction(
   } finally {
     activeActions.delete(operationKey);
   }
+}
+
+export async function ensureNodeProjectManifest(repo: string): Promise<boolean> {
+  const path = join(repo, 'package.json');
+  if (await fileExists(path)) return false;
+  const normalized = basename(repo)
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^[-._]+|[-._]+$/g, '')
+    .slice(0, 214);
+  const manifest = `${JSON.stringify({
+    name: normalized || 'luma-project',
+    version: '0.1.0',
+    private: true,
+  }, null, 2)}\n`;
+  try {
+    await writeFile(path, manifest, { encoding: 'utf8', flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+    throw error;
+  }
+  await ensureIgnored(repo, 'node_modules/');
+  return true;
 }
 
 export async function stackToolStatus(
@@ -301,12 +347,13 @@ async function requireFile(repo: string, name: string, message: string): Promise
   if (!(await fileExists(join(repo, name)))) throw new Error(message);
 }
 
-async function ensureVirtualEnvironmentIgnored(repo: string): Promise<void> {
+async function ensureIgnored(repo: string, entry: string): Promise<void> {
   const path = join(repo, '.gitignore');
   const current = (await readText(path)) ?? '';
-  if (/^\.venv\/?$/m.test(current)) return;
+  const escaped = entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`^${escaped}$`, 'm').test(current)) return;
   const separator = current && !current.endsWith('\n') ? '\n' : '';
-  await writeFile(path, `${current}${separator}.venv/\n`, 'utf8');
+  await writeFile(path, `${current}${separator}${entry}\n`, 'utf8');
 }
 
 async function fileExists(path: string): Promise<boolean> {

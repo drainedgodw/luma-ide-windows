@@ -11,6 +11,10 @@ extraResources:
     to: git
     filter:
       - '**/*'
+  - from: vendor/node
+    to: node
+    filter:
+      - '**/*'
   - from: THIRD_PARTY_NOTICES.md
     to: THIRD_PARTY_NOTICES.md
 win:
