@@ -29,7 +29,7 @@ New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
   '@echo off',
   "call `"$developerCommand`" -arch=x64 -host_arch=x64",
   'if errorlevel 1 exit /b %errorlevel%',
-  "cl.exe /nologo /TC /O2 /W4 /DUNICODE /D_UNICODE `"$source`" /Fo`"$object`" /Fe`"$output`" user32.lib",
+  "cl.exe /nologo /TC /O2 /W4 /DUNICODE /D_UNICODE `"$source`" /Fo`"$object`" /Fe`"$output`" /link user32.lib",
   'exit /b %errorlevel%'
 ) | Set-Content -Path $commandFile -Encoding ascii
 
