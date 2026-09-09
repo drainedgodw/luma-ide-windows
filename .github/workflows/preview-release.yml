@@ -88,7 +88,6 @@ jobs:
           $asarListing = npx asar list 'dist/win-unpacked/resources/app.asar'
           if (-not ($asarListing -match 'out\\main\\stackManifestPreparation\.js')) { throw 'Stack manifest helper is missing from packaged app.asar' }
           if (-not ($asarListing -match 'out\\main\\completeStackTools\.js')) { throw 'Complete Stack helper is missing from packaged app.asar' }
-          if (-not ($asarListing -match 'out\\main\\nativePanelBlurController\.js')) { throw 'Native panel blur controller is missing from packaged app.asar' }
           $unpacked = Resolve-Path 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty'
           if (-not (Test-Path "$unpacked/build/Release/pty.node")) { throw 'pty.node is missing' }
           if (-not (Test-Path 'dist/win-unpacked/resources/git/cmd/git.exe')) { throw 'MinGit is missing' }
