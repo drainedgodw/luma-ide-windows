@@ -16,7 +16,7 @@ if (-not (Test-Path $source -PathType Leaf)) {
 }
 
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
-& $compiler.Source /nologo /std:c++17 /permissive- /O2 /W4 /EHsc /guard:cf /DUNICODE /D_UNICODE $source "/Fo:$object" "/Fe:$output" /link /DYNAMICBASE /NXCOMPAT /guard:cf user32.lib
+& $compiler.Source /nologo /TC /O2 /W4 /DUNICODE /D_UNICODE $source "/Fo:$object" "/Fe:$output" user32.lib
 if ($LASTEXITCODE -ne 0) {
   throw "Native blur helper compilation failed with exit code $LASTEXITCODE."
 }

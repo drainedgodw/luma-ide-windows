@@ -1,78 +1,77 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <cerrno>
-#include <cstdint>
-#include <cstdlib>
-#include <cwchar>
-#include <limits>
+#include <errno.h>
+#include <stdlib.h>
+#include <wchar.h>
 
-namespace {
-enum class AccentState : int {
-  Disabled = 0,
-  EnableBlurBehind = 3,
-};
+typedef enum AccentState {
+  AccentDisabled = 0,
+  AccentEnableBlurBehind = 3,
+} AccentState;
 
-enum class WindowCompositionAttribute : int {
-  AccentPolicy = 19,
-};
+typedef enum WindowCompositionAttribute {
+  WindowCompositionAccentPolicy = 19,
+} WindowCompositionAttribute;
 
-struct AccentPolicy {
+typedef struct AccentPolicy {
   AccentState state;
   int flags;
   DWORD gradientColor;
   int animationId;
-};
+} AccentPolicy;
 
-struct WindowCompositionAttributeData {
+typedef struct WindowCompositionAttributeData {
   WindowCompositionAttribute attribute;
   void* data;
   SIZE_T size;
-};
+} WindowCompositionAttributeData;
 
-using SetWindowCompositionAttributeFunction = BOOL(WINAPI*)(
+typedef BOOL(WINAPI* SetWindowCompositionAttributeFunction)(
     HWND,
     WindowCompositionAttributeData*);
 
-bool parseWindowHandle(const wchar_t* value, HWND& window) {
+static BOOL parseWindowHandle(const wchar_t* value, HWND* window) {
+  wchar_t* end = NULL;
+  unsigned __int64 raw;
   errno = 0;
-  wchar_t* end = nullptr;
-  const unsigned long long raw = std::wcstoull(value, &end, 10);
-  if (errno != 0 || end == value || *end != L'\0' || raw == 0 ||
-      raw > std::numeric_limits<std::uintptr_t>::max()) {
-    return false;
-  }
-  window = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(raw));
-  return IsWindow(window) == TRUE;
+  raw = _wcstoui64(value, &end, 10);
+  if (errno == ERANGE || end == value || *end != L'\0' || raw == 0) return FALSE;
+  *window = (HWND)(UINT_PTR)raw;
+  return IsWindow(*window);
 }
-}  // namespace
 
 int wmain(int argc, wchar_t** argv) {
+  HMODULE user32;
+  FARPROC address;
+  SetWindowCompositionAttributeFunction setWindowCompositionAttribute;
+  WindowCompositionAttributeData data;
+  AccentPolicy policy;
+  HWND window = NULL;
+
   if (argc != 3) return 2;
+  if (!parseWindowHandle(argv[1], &window)) return 3;
 
-  HWND window = nullptr;
-  if (!parseWindowHandle(argv[1], window)) return 3;
-
-  AccentState state;
-  if (std::wcscmp(argv[2], L"enable") == 0) {
-    state = AccentState::EnableBlurBehind;
-  } else if (std::wcscmp(argv[2], L"disable") == 0) {
-    state = AccentState::Disabled;
+  if (wcscmp(argv[2], L"enable") == 0) {
+    policy.state = AccentEnableBlurBehind;
+  } else if (wcscmp(argv[2], L"disable") == 0) {
+    policy.state = AccentDisabled;
   } else {
     return 4;
   }
 
-  const HMODULE user32 = GetModuleHandleW(L"user32.dll");
-  if (user32 == nullptr) return 5;
-  const auto setWindowCompositionAttribute =
-      reinterpret_cast<SetWindowCompositionAttributeFunction>(
-          GetProcAddress(user32, "SetWindowCompositionAttribute"));
-  if (setWindowCompositionAttribute == nullptr) return 6;
+  user32 = GetModuleHandleW(L"user32.dll");
+  if (user32 == NULL) return 5;
+  address = GetProcAddress(user32, "SetWindowCompositionAttribute");
+  if (address == NULL) return 6;
+  setWindowCompositionAttribute = (SetWindowCompositionAttributeFunction)address;
 
-  // ACCENT_ENABLE_BLURBEHIND with a zero gradient color asks DWM for live
-  // desktop blur without Acrylic's gray color/tint layer.
-  AccentPolicy policy{state, 0, 0x00000000, 0};
-  WindowCompositionAttributeData data{
-      WindowCompositionAttribute::AccentPolicy, &policy, sizeof(policy)};
-  return setWindowCompositionAttribute(window, &data) == TRUE ? 0 : 7;
+  /* Zero gradient color keeps DWM blur live while removing Acrylic tint. */
+  policy.flags = 0;
+  policy.gradientColor = 0x00000000;
+  policy.animationId = 0;
+  data.attribute = WindowCompositionAccentPolicy;
+  data.data = &policy;
+  data.size = sizeof(policy);
+  return setWindowCompositionAttribute(window, &data) ? 0 : 7;
 }
