@@ -97,6 +97,7 @@ interface LumaApi {
   winMin(): void;
   winMax(): void;
   winClose(): void;
+  winBlur(enabled: boolean): void;
   wallpaper(): Promise<string | null>;
   openExternal(u: string): Promise<GitResult<null>>;
   termCreate(id: string): void;

@@ -67,7 +67,9 @@ jobs:
             'Apache.Maven',
             'Microsoft.DotNet.SDK.8',
             'LLVM.LLVM',
-            'Kitware.CMake'
+            'Kitware.CMake',
+            'Unity.UnityHub',
+            'EpicGames.EpicGamesLauncher'
           )
           foreach ($id in $ids) {
             & $winget.Source show --id $id --exact --source winget --accept-source-agreements
@@ -103,7 +105,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The packaged MinGit executable failed its version check.' }
           & 'dist/win-unpacked/resources/node/node.exe' --version
           if ($LASTEXITCODE -ne 0) { throw 'The packaged Node.js executable failed its version check.' }
-          & 'dist/win-unpacked/resources/node/node.exe' 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js' --version
+          & 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js' --version
           if ($LASTEXITCODE -ne 0) { throw 'The packaged npm CLI failed its version check.' }
       - name: Prepare release assets
         shell: pwsh
@@ -123,17 +125,15 @@ jobs:
           }
           $checksums | Set-Content 'release/SHA256SUMS.txt' -Encoding ascii
           @"
-          # Luma 0.3.0 — Fix Stack bug (Windows Preview)
+          # Luma 0.4.0 — Acrylic Blur (Windows Preview)
 
           Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.
 
-          The original transparent Liquid Glass window, panel opacity, layout and architecture are restored. Settings now controls blur on the main panel, sidebars, History, Changes, terminal and other glass blocks from 0–64 px; the 32 px default matches the original fixed blur. The wallpaper itself is not blurred or dimmed.
+          Liquid Glass remains a real transparent Electron window and never imports the desktop wallpaper. Settings now has one Blur switch instead of a strength slider. On supported Windows versions, turning it on selects native Acrylic while keeping the window translucent; turning it off selects no native background material. A fixed 32 px panel blur remains as the safe fallback.
 
-          Stack can install or remove allowlisted Node.js, Python, Rust, Go, Java/Maven, .NET and C/C++ runtimes through exact winget package IDs. Runtime removal has a system-wide warning, every command is built in the main process with shell execution disabled, and Workspace Trust is required. Restart Luma after a runtime change so it inherits the new PATH.
+          Stack includes allowlisted install/remove actions for every framework and library shown in the current catalog. Node, Python, Cargo, Go and .NET actions use their project-native package managers. Java dependencies are managed in pom.xml, C/C++ dependencies in vcpkg.json, MAUI as a .NET workload, and Unity/Unreal through their official Windows launchers. Workspace Trust is required and commands remain fixed in the main process with shell execution disabled.
 
-          JavaScript and TypeScript package actions use bundled, verified Node.js 22.22.0 and npm and can initialize a minimal package.json. Project package actions also support Python .venv, Cargo, Go and one unambiguous .csproj. Java and C/C++ framework/library mutation remains manual until a deterministic manifest path is implemented.
-
-          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen. Manual visual and runtime smoke testing remains pending.
+          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen. Manual visual testing of Acrylic remains required because CI has no interactive desktop compositor.
           "@ | Set-Content 'release-notes.md' -Encoding utf8
       - name: Publish rolling preview release
         shell: pwsh
@@ -141,7 +141,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = 'windows-preview'
-          $title = 'Luma 0.3.0 — Fix Stack bug (Windows Preview)'
+          $title = 'Luma 0.4.0 — Acrylic Blur (Windows Preview)'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag --force $tag $env:GITHUB_SHA

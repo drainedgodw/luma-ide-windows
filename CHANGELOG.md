@@ -2,6 +2,28 @@
 
 All notable changes are documented here. Luma follows semantic versioning once stable; `0.x` releases may change behavior between prereleases.
 
+## [0.4.0] - 2026-09-09
+
+### Added
+
+- Replaced the numeric panel-blur slider with one persisted **Blur** switch.
+- Added native Windows Acrylic blur for the transparent Liquid Glass window.
+- Kept the fixed 32 px frosted-panel blur as a fallback when native Acrylic is unavailable.
+
+### Changed
+
+- Any non-zero blur value saved by 0.3.0 migrates to the single enabled state; zero remains disabled.
+- Turning Blur off selects the native `none` material while preserving Electron's real transparent window.
+- Luma still never reads, copies, caches or renders the desktop wallpaper.
+
+### Security
+
+- The renderer sends only a boolean preference. The main process alone chooses between the fixed `acrylic` and `none` materials.
+
+### Compatibility
+
+- Native Acrylic depends on Windows and DWM support. Unsupported systems safely keep real transparency and the panel fallback instead of using a wallpaper imitation.
+
 ## [0.3.0] - 2026-09-08
 
 ### Fixed
@@ -21,7 +43,6 @@ All notable changes are documented here. Luma follows semantic versioning once s
 
 ### Known limitations
 
-- Java and C/C++ runtime setup is automatic, but their framework/library entries remain manual until a deterministic project-manifest mutation path is available.
 - Newly installed or removed system runtimes require a Luma restart so the application inherits the updated system PATH.
 
 ## [0.2.0] - 2026-09-06
@@ -50,7 +71,6 @@ All notable changes are documented here. Luma follows semantic versioning once s
 
 - Simpler graph lane assignment.
 - Bisect view tracks good/bad marks per commit.
-- Release workflow builds through the bootstrap like CI does.
 
 ## [0.1.0] - 2026-09-01
 
@@ -62,23 +82,8 @@ All notable changes are documented here. Luma follows semantic versioning once s
 - Workspace Trust, Tasks/Test Center, local Risk Map, Operation Preview and Secret Guard.
 - Session Capsules and rollback checkpoints.
 
-### Changed
-
-- Orbit is now a flat Obsidian-style commit web instead of a 3D constellation.
-
-### Build tooling
-
-- The bootstrap downloads a private standalone CPython 3.11 toolchain into `.luma/` whenever the system Python lacks `distutils` (removed in Python 3.12), fixing the `node-pty` native build on current Arch, Fedora and similar distributions without touching the system Python.
-
-### Security and release hardening
-
-- Documented Workspace Trust and Git hook limitations.
-- Defined experimental maturity labels for preview, Risk Map, language tools and Capsules.
-- Added AppImage extraction and credential guidance.
-
 ### Known limitations
 
 - Language Intelligence is not protocol-based LSP.
 - Risk Map reflects local test results rather than GitHub CI.
 - Capsules do not restore live PTY processes.
-- Linux AppImage is the only supported binary format in the first prerelease.

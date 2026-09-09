@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('luma', {
   winMin: () => ipcRenderer.send('win:min'),
   winMax: () => ipcRenderer.send('win:max'),
   winClose: () => ipcRenderer.send('win:close'),
+  winBlur: (enabled: boolean) => ipcRenderer.send('win:blur', enabled === true),
   wallpaper: () => ipcRenderer.invoke('wallpaper:get'),
   openExternal: (u: string) => ipcRenderer.invoke('shell:openExternal', u),
   termCreate: (id: string) => ipcRenderer.send('term:create', id),
@@ -82,4 +83,5 @@ export type LumaApi = {
   updateCheck(): Promise<unknown>;
   updateRun(c: string): Promise<unknown>;
   onCommand(cb: (e: { id: number; command: string; at: number }) => void): void;
+  winBlur(enabled: boolean): void;
 };
