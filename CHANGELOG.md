@@ -1,62 +1,29 @@
 # Changelog
 
-All notable changes are documented here. Luma follows semantic versioning once stable; `0.x` releases may change behavior between prereleases.
+## 0.4.0 — Native panel blur
 
-## [0.4.0] - 2026-09-09
+- Preserved the real transparent Electron content window with `backgroundMaterial: 'none'`; no gray or blue material is applied across the full application.
+- Added a separate frameless, focusless, taskbar-hidden and click-through Windows Acrylic layer behind Luma.
+- Clipped that native layer to measured rounded regions for the header, navigation, top-level glass view panels, welcome surface and terminal.
+- Restored the 0–64 panel-blur slider and connected it to both the CSS panel filter and the native layer's visible intensity; zero hides the layer completely.
+- Re-measures panel regions after layout, resize, transitions and workspace/view replacement so stale full-window material cannot survive a workspace switch.
+- Validates, clamps and limits all renderer-provided native regions before using them in the main process.
+- Does not read, capture, copy, cache or render the desktop wallpaper.
+- Added geometry, malformed-payload and source-invariant tests for the panel-only architecture.
+- Requires interactive Windows validation for movement, DPI, maximize/minimize, focus switching and perceived blur strength before the PR leaves draft.
 
-### Fixed
+## 0.3.0 — Stack fix
 
-- Removed the rejected whole-window Acrylic material that covered Luma with a gray or blue backdrop.
-- Explicitly keep the Windows background material set to `none`; the root window remains genuinely transparent.
-- Restored the 0–64 px panel slider and scope its CSS filter only to the header, sidebar, main surface, terminal and nested glass blocks.
-- Prevented the native material from persisting or changing after switching between workspaces.
-- Luma still never reads, copies, caches or renders the desktop wallpaper.
+- Added reversible install/remove controls for packages, libraries and frameworks throughout Stack.
+- Covers the complete visible catalog across Node, Python, Rust, Go, .NET, Java, C/C++, Windows tools, Android metadata, Unity Hub and Epic Games Launcher.
+- Uses workspace-local manifests and environments wherever the ecosystem supports them.
+- Keeps Workspace Trust, fixed package/runtime allowlists, `shell: false`, operation locks, bounded output and explicit command previews.
+- Runtime removal is gated behind a typed `REMOVE` confirmation and never auto-uninstalls system runtimes.
+- Added tests for Stack catalog coverage, generated commands and packaged helper discovery.
+- Fixed repository-local Python detection so `.venv` continues to work without a system Python on PATH.
 
-### Compatibility
+## 0.2.0
 
-- Electron CSS cannot sample or blur pixels from applications or the Windows desktop behind a transparent window. The restored slider affects only content inside Electron; real panel-only desktop blur requires a different native window/composition architecture.
-
-## [0.3.0] - 2026-09-08
-
-### Fixed
-
-- Rebuilt Languages & Ecosystem (Stack) so supported project dependencies have one-click install and remove actions.
-- Added allowlisted runtime install/remove controls to every language card: Node.js, Python, Rust, Go, Java, .NET and C/C++.
-- Added platform-aware runtime plans for Windows `winget` and Linux apt, dnf, pacman and zypper through `pkexec`.
-- Added installed-state refresh, system-wide removal warnings and visible command output.
-- Restored the original transparent Liquid Glass layout and moved blur control from the wallpaper to the interface panels.
-
-### Security
-
-- Require Workspace Trust for project package and system runtime mutations.
-- Accept only shared-catalog package/runtime identifiers and build every command in the main process with `shell: false`.
-- Bound process duration/output, serialize package-manager mutations and avoid executing repository-local Python during status detection.
-
-### Known limitations
-
-- Newly installed or removed system runtimes require a Luma restart so the application inherits the updated system PATH.
-
-## [0.2.0] - 2026-09-06
-
-### Added
-
-- Pleasant, contextual interface sounds for regular taps, navigation, toggles, primary actions and destructive controls.
-- Sound controls in Settings, including a master switch and volume slider.
-- A draggable terminal divider with keyboard resizing, remembered height and a one-click maximize/restore control.
-
-## [0.1.1] - 2026-09-01
-
-### Added
-
-- Anonymous update checks with no accounts or telemetry.
-- Unit tests for the graph lane layout.
-- Signed release and nightly artifacts.
-
-## [0.1.0] - 2026-09-01
-
-### Added
-
-- Lanes history view and the Orbit web with pan and zoom.
-- Visual staging, commit diffs, branch operations, rebase, bisect and Rescue.
-- GitHub PAT/SSH repository access.
-- Workspace Trust, Tasks/Test Center, local Risk Map, Operation Preview and Secret Guard.
+- Initial Windows port with NSIS and portable packages.
+- Bundled MinGit and Node.js runtimes.
+- Added GitHub preview release workflow and packaged-runtime verification.
