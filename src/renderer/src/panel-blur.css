@@ -2,8 +2,9 @@
   --panel-blur: 32px;
 }
 
-/* Preserve the original Liquid Glass transparency and tune only the blur
- * applied by the main, sidebar and nested glass blocks. */
+/* The desktop blur is rendered by a shaped, click-through native layer behind
+ * top-level glass panels. CSS blur keeps in-app content visually consistent and
+ * uses the same 0–64 setting without applying any full-window backdrop. */
 html[data-theme='liquid'] .glass,
 html[data-theme='liquid'] .glass-soft,
 html[data-theme='liquid'] .term-panel {

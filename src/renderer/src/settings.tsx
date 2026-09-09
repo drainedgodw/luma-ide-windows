@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useNativePanelBlur } from './nativePanelBlur';
 import { playUISound, soundForButton } from './uiSounds';
 
 export const DEFAULT_PANEL_BLUR = 32;
@@ -53,6 +54,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       return DEFAULTS;
     }
   });
+  useNativePanelBlur(settings.theme, settings.panelBlur);
   const update = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(settings));

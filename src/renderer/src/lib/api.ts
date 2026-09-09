@@ -1,3 +1,5 @@
+import type { NativePanelBlurPayload } from '../../../shared/nativePanelBlur';
+
 export interface GitResult<T> {
   ok: boolean;
   data?: T;
@@ -97,6 +99,7 @@ interface LumaApi {
   winMin(): void;
   winMax(): void;
   winClose(): void;
+  winPanelBlur(payload: NativePanelBlurPayload): void;
   wallpaper(): Promise<string | null>;
   openExternal(u: string): Promise<GitResult<null>>;
   termCreate(id: string): void;

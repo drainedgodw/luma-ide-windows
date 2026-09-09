@@ -7,10 +7,18 @@ import { registerGitHubIpc } from './githubIpc';
 import { registerIntelligenceIpc } from './intelligenceIpc';
 import { registerUpdateIpc } from './update';
 import { getWallpaper } from './wallpaper';
+import { NativePanelBlurController } from './nativePanelBlurController';
 
 if (process.platform === 'win32') app.setAppUserModelId('dev.luma.ide');
 app.commandLine.appendSwitch('enable-smooth-scrolling');
 let win: BrowserWindow | null = null;
+let nativePanelBlur: NativePanelBlurController | null = null;
+
+ipcMain.on('win:panelBlur', (event, payload: unknown) => {
+  if (!win || event.sender !== win.webContents) return;
+  nativePanelBlur?.update(payload);
+});
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1440,
@@ -29,8 +37,13 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  nativePanelBlur = new NativePanelBlurController(win);
   win.on('ready-to-show', () => win?.show());
-  win.on('closed', () => (win = null));
+  win.on('closed', () => {
+    nativePanelBlur?.dispose();
+    nativePanelBlur = null;
+    win = null;
+  });
   ipcMain.on('win:min', () => win?.minimize());
   ipcMain.on('win:max', () => {
     if (win?.isMaximized()) win.unmaximize();

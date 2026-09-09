@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { NativePanelBlurPayload } from '../shared/nativePanelBlur';
 const SECURE_GIT_CHANNELS = new Set(['fetch', 'pull', 'push']);
 contextBridge.exposeInMainWorld('luma', {
   openRepoDialog: () => ipcRenderer.invoke('repo:directory:open'),
@@ -44,6 +45,7 @@ contextBridge.exposeInMainWorld('luma', {
   winMin: () => ipcRenderer.send('win:min'),
   winMax: () => ipcRenderer.send('win:max'),
   winClose: () => ipcRenderer.send('win:close'),
+  winPanelBlur: (payload: NativePanelBlurPayload) => ipcRenderer.send('win:panelBlur', payload),
   wallpaper: () => ipcRenderer.invoke('wallpaper:get'),
   openExternal: (u: string) => ipcRenderer.invoke('shell:openExternal', u),
   termCreate: (id: string) => ipcRenderer.send('term:create', id),
@@ -82,4 +84,5 @@ export type LumaApi = {
   updateCheck(): Promise<unknown>;
   updateRun(c: string): Promise<unknown>;
   onCommand(cb: (e: { id: number; command: string; at: number }) => void): void;
+  winPanelBlur(payload: NativePanelBlurPayload): void;
 };
