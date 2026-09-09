@@ -19,28 +19,28 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Compile helper
-        id: compile
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-native-blur.ps1 2>&1 | Tee-Object -FilePath native-blur-build.log
-          $status = $LASTEXITCODE
-          exit $status
-      - name: Report failure
-        if: steps.compile.outcome == 'failure'
+      - name: Compile and verify helper
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tail = (Get-Content native-blur-build.log -Tail 200) -join "`n"
-          $body = "## Native blur helper build failure`n`nCommit: $env:GITHUB_SHA`n`n```text`n$tail`n```"
-          $body | Set-Content ci-comment.md -Encoding utf8
-          gh pr comment 1 --body-file ci-comment.md --repo $env:GITHUB_REPOSITORY
-          exit 1
-      - name: Verify executable
-        if: steps.compile.outcome == 'success'
-        shell: pwsh
-        run: |
+          & pwsh.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-native-blur.ps1 *> native-blur-build.log
+          $status = $LASTEXITCODE
+          Get-Content native-blur-build.log
+          if ($status -ne 0) {
+            $tail = (Get-Content native-blur-build.log -Tail 200) -join "`n"
+            $body = @(
+              '## Native blur helper build failure',
+              '',
+              "Commit: $env:GITHUB_SHA",
+              '',
+              '```text',
+              $tail,
+              '```'
+            ) -join "`n"
+            $body | Set-Content ci-comment.md -Encoding utf8
+            gh pr comment 1 --body-file ci-comment.md --repo $env:GITHUB_REPOSITORY
+            exit $status
+          }
           if (-not (Test-Path 'vendor/native/Luma.NativeBlur.exe' -PathType Leaf)) { throw 'Native blur helper was not produced.' }
           Get-Item 'vendor/native/Luma.NativeBlur.exe' | Format-List Name,Length
