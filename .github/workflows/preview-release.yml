@@ -1,9 +1,21 @@
-name: Windows Preview Release
+name: Publish Windows preview
 
 on:
   push:
-    branches:
-      - feat/windows-foundation
+    branches: [feat/windows-foundation]
+    paths:
+      - .github/workflows/preview-release.yml
+      - src/**
+      - scripts/**
+      - tests/**
+      - build/**
+      - package.json
+      - package-lock.json
+      - update.json
+      - CHANGELOG.md
+      - electron-builder.yml
+      - THIRD_PARTY_NOTICES.md
+      - README.md
   workflow_dispatch:
 
 permissions:
@@ -16,45 +28,28 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      npm_config_msvs_version: '2022'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Use Node.js 22
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
-
-      - name: Use Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-
-      - name: Configure MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-
+      - name: Configure Python for node-gyp
+        shell: pwsh
+        run: |
+          "npm_config_python=$env:pythonLocation\python.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Install dependencies
-        shell: pwsh
-        run: |
-          npm ci
-          npm install --no-save --ignore-scripts node-pty@1.1.0
-          npm install --no-save --ignore-scripts @rollup/rollup-win32-x64-msvc@4.53.5
-          npm install --no-save --ignore-scripts @esbuild/win32-x64@0.25.12
-          npm rebuild node-pty --build-from-source
-
-      - name: Verify native shell
-        shell: pwsh
-        run: node scripts/verify-node-pty.mjs
-
-      - name: Verify Stack catalog and actions
-        shell: pwsh
-        run: |
-          npm run typecheck
-          npm run test:run
-
+        run: npm ci
+      - name: Validate source
+        run: npm run check
       - name: Verify panel-only native blur architecture
         shell: pwsh
         run: |
@@ -63,68 +58,115 @@ jobs:
           foreach ($pattern in @("backgroundMaterial: 'acrylic'", 'setShape\(shape\)', 'setIgnoreMouseEvents\(true\)', 'moveAbove')) {
             if (-not (Select-String -Path 'src/main/nativePanelBlurController.ts' -Pattern $pattern -Quiet)) { throw "Missing native panel layer invariant: $pattern" }
           }
-
-      - name: Build renderer and main process
+      - name: Verify Stack winget package IDs when available
         shell: pwsh
+        run: |
+          $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+          if (-not $winget) {
+            Write-Warning 'winget is not present on the Windows Server runner; command plans remain covered by unit tests.'
+            exit 0
+          }
+          $ids = @(
+            'OpenJS.NodeJS.LTS',
+            'Python.Python.3.12',
+            'Rustlang.Rustup',
+            'GoLang.Go',
+            'EclipseAdoptium.Temurin.21.JDK',
+            'Apache.Maven',
+            'Microsoft.DotNet.SDK.8',
+            'LLVM.LLVM',
+            'Kitware.CMake',
+            'Unity.UnityHub',
+            'EpicGames.EpicGamesLauncher'
+          )
+          foreach ($id in $ids) {
+            & $winget.Source show --id $id --exact --source winget --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) { throw "Unknown winget package ID: $id" }
+          }
+      - name: Build application
         run: npm run build
-
-      - name: Fetch pinned Windows runtimes
+      - name: Fetch verified MinGit runtime
         shell: pwsh
-        run: node scripts/fetch-windows-runtimes.mjs
-
-      - name: Build NSIS and portable packages
+        run: ./scripts/fetch-mingit.ps1
+      - name: Fetch verified Node.js runtime
         shell: pwsh
-        run: npm run dist:win
-
+        run: ./scripts/fetch-node-runtime.ps1
+      - name: Package Windows x64
+        run: npx electron-builder --win --x64 --publish never
       - name: Verify packaged runtime
         shell: pwsh
         run: |
+          $requiredFiles = @(
+            'dist/win-unpacked/Luma.exe',
+            'dist/win-unpacked/resources/app.asar',
+            'dist/win-unpacked/resources/git/cmd/git.exe',
+            'dist/win-unpacked/resources/node/node.exe',
+            'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js',
+            'dist/win-unpacked/resources/THIRD_PARTY_NOTICES.md'
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file -PathType Leaf)) { throw "Missing packaged runtime file: $file" }
+          }
+          $nodePtyBinaries = @(Get-ChildItem 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty' -Filter '*.node' -File -Recurse)
+          if ($nodePtyBinaries.Count -eq 0) { throw 'The packaged node-pty native binary is missing.' }
           & 'dist/win-unpacked/resources/git/cmd/git.exe' --version
+          if ($LASTEXITCODE -ne 0) { throw 'The packaged MinGit executable failed its version check.' }
           & 'dist/win-unpacked/resources/node/node.exe' --version
+          if ($LASTEXITCODE -ne 0) { throw 'The packaged Node.js executable failed its version check.' }
           & 'dist/win-unpacked/resources/node/node.exe' 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js' --version
-          $env:ELECTRON_RUN_AS_NODE = '1'
-          & 'dist/win-unpacked/Luma.exe' 'scripts/verify-packaged-stack.cjs'
-          Remove-Item Env:ELECTRON_RUN_AS_NODE
-          $asarListing = npx asar list 'dist/win-unpacked/resources/app.asar'
-          if (-not ($asarListing -match 'out\\main\\stackManifestPreparation\.js')) { throw 'Stack manifest helper is missing from packaged app.asar' }
-          if (-not ($asarListing -match 'out\\main\\completeStackTools\.js')) { throw 'Complete Stack helper is missing from packaged app.asar' }
-          $unpacked = Resolve-Path 'dist/win-unpacked/resources/app.asar.unpacked/node_modules/node-pty'
-          if (-not (Test-Path "$unpacked/build/Release/pty.node")) { throw 'pty.node is missing' }
-          if (-not (Test-Path 'dist/win-unpacked/resources/git/cmd/git.exe')) { throw 'MinGit is missing' }
-          if (-not (Test-Path 'dist/win-unpacked/resources/node/node.exe')) { throw 'Node.js is missing' }
-          if (-not (Test-Path 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js')) { throw 'npm is missing' }
-
-      - name: Generate checksums
+          if ($LASTEXITCODE -ne 0) { throw 'The packaged npm CLI failed its version check.' }
+      - name: Prepare release assets
         shell: pwsh
         run: |
-          $installer = Get-ChildItem dist -Filter '*Setup*x64.exe' | Select-Object -First 1
-          $portable = Get-ChildItem dist -Filter '*Portable*x64.exe' | Select-Object -First 1
-          if (-not $installer -or -not $portable) { throw 'Expected Windows packages were not produced.' }
-          $lines = @(
-            "$( (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLower() )  $($installer.Name)",
-            "$( (Get-FileHash $portable.FullName -Algorithm SHA256).Hash.ToLower() )  $($portable.Name)"
-          )
-          Set-Content -Path dist/SHA256SUMS.txt -Value $lines
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          $packages = @(Get-ChildItem dist -Filter '*.exe' -File)
+          $installers = @($packages | Where-Object { $_.Name -match 'Setup' })
+          $portablePackages = @($packages | Where-Object { $_.Name -notmatch 'Setup' })
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer, found $($installers.Count): $($packages.Name -join ', ')" }
+          if ($portablePackages.Count -ne 1) { throw "Expected one portable executable, found $($portablePackages.Count): $($packages.Name -join ', ')" }
+          Copy-Item $installers[0].FullName 'release/Luma-Windows-Setup-x64.exe'
+          Copy-Item $portablePackages[0].FullName 'release/Luma-Windows-Portable-x64.exe'
+          $releaseFiles = @(Get-Item 'release/Luma-Windows-Setup-x64.exe'; Get-Item 'release/Luma-Windows-Portable-x64.exe')
+          $checksums = foreach ($file in $releaseFiles) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $checksums | Set-Content 'release/SHA256SUMS.txt' -Encoding ascii
+          @"
+          # Luma 0.4.0 — Native Panel Blur (Windows Preview)
 
+          Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.
+
+          The main Luma window stays genuinely transparent with native background material explicitly disabled. Acrylic now exists only in a separate frameless, focusless, taskbar-hidden and click-through native window clipped to the rounded header, sidebar, top-level view panels and terminal. There is no full-window gray or blue material.
+
+          The 0–64 Panel blur slider changes both the panel CSS filter and the native layer's visible intensity; zero removes the native layer completely. Panel regions are re-measured after layout, resize, transitions and workspace/view replacement. Renderer values are validated, clamped and limited in the main process.
+
+          Luma never reads, captures, copies, caches or renders the desktop wallpaper. This preview still requires interactive Windows verification for z-order, focus, movement, resize, maximize/minimize, DPI and perceived blur strength before the draft pull request can be completed.
+
+          Stack retains allowlisted install/remove actions for every framework and library shown in the current catalog. Workspace Trust is required and commands remain fixed in the main process with shell execution disabled.
+
+          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen.
+          "@ | Set-Content 'release-notes.md' -Encoding utf8
       - name: Publish rolling preview release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: windows-preview
-          name: Luma 0.4.0 — Native Panel Blur (Windows Preview)
-          prerelease: true
-          make_latest: false
-          target_commitish: ${{ github.sha }}
-          body: |
-            Windows x64 preview for Luma 0.4.0.
-
-            This build keeps the main application window genuinely transparent and applies native Acrylic only through a separate click-through window clipped to the rounded header, sidebar, top-level view panels and terminal. The 0–64 slider changes both panel CSS blur and the native layer's visible intensity; zero removes it. Workspace/view changes re-measure the regions instead of leaving a full-window material behind. No wallpaper is read, copied or rendered.
-
-            The native multi-window composition still needs interactive Windows verification for z-order, focus, movement, resize, maximize/minimize and DPI behavior before the draft PR is considered complete.
-
-            Download **Luma-Windows-Setup-x64.exe** for the normal installer or **Luma-Windows-Portable-x64.exe** for the portable build. This preview is unsigned, so Windows SmartScreen may show a warning.
-          files: |
-            dist/*Setup*x64.exe
-            dist/*Portable*x64.exe
-            dist/SHA256SUMS.txt
-          fail_on_unmatched_files: true
-          overwrite_files: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'windows-preview'
+          $title = 'Luma 0.4.0 — Native Panel Blur (Windows Preview)'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag --force $tag $env:GITHUB_SHA
+          git push origin "refs/tags/$tag" --force
+          $assets = @('release/Luma-Windows-Setup-x64.exe', 'release/Luma-Windows-Portable-x64.exe', 'release/SHA256SUMS.txt')
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          $releaseExists = $LASTEXITCODE -eq 0
+          if ($releaseExists) {
+            gh release upload $tag @assets --clobber --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to upload preview release assets.' }
+            gh release edit $tag --title $title --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to update the preview release.' }
+          } else {
+            gh release create $tag @assets --verify-tag --title $title --notes-file release-notes.md --prerelease --repo $env:GITHUB_REPOSITORY
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to create the preview release.' }
+          }
