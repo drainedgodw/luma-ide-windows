@@ -5,6 +5,7 @@ import {
   nativePanelBlurShape,
   normalizeNativePanelBlurPayload,
 } from './nativePanelBlurGeometry';
+import { enableNeutralNativeBlur } from './windowsNativeBlur';
 
 const TRANSPARENT_DOCUMENT =
   'data:text/html;charset=utf-8,%3C!doctype%20html%3E%3Cmeta%20charset%3D%22utf-8%22%3E%3Cstyle%3Ehtml%2Cbody%7Bmargin%3A0%3Bwidth%3A100%25%3Bheight%3A100%25%3Bbackground%3Atransparent%3Boverflow%3Ahidden%7D%3C%2Fstyle%3E';
@@ -16,7 +17,7 @@ export class NativePanelBlurController {
     strength: 0,
     regions: [],
   };
-  private layerLoaded = false;
+  private layerPrepared = false;
   private disposed = false;
 
   private readonly sync = () => this.render();
@@ -25,7 +26,7 @@ export class NativePanelBlurController {
 
   constructor(
     private readonly mainWindow: BrowserWindow,
-    private readonly platform = process.platform
+    private readonly platform = process.platform,
   ) {
     if (platform !== 'win32') return;
     mainWindow.on('move', this.sync);
@@ -39,9 +40,16 @@ export class NativePanelBlurController {
   }
 
   update(value: unknown): void {
-    if (this.disposed || this.platform !== 'win32' || this.mainWindow.isDestroyed()) return;
-    const bounds = this.mainWindow.getContentBounds();
-    this.payload = normalizeNativePanelBlurPayload(value, bounds);
+    if (
+      this.disposed ||
+      this.platform !== 'win32' ||
+      this.mainWindow.isDestroyed()
+    )
+      return;
+    this.payload = normalizeNativePanelBlurPayload(
+      value,
+      this.mainWindow.getContentBounds(),
+    );
     this.render();
   }
 
@@ -63,7 +71,11 @@ export class NativePanelBlurController {
 
   private render(): void {
     if (this.disposed || this.mainWindow.isDestroyed()) return;
-    if (!this.payload.enabled || !this.mainWindow.isVisible() || this.mainWindow.isMinimized()) {
+    if (
+      !this.payload.enabled ||
+      !this.mainWindow.isVisible() ||
+      this.mainWindow.isMinimized()
+    ) {
       this.hideLayer();
       return;
     }
@@ -84,22 +96,23 @@ export class NativePanelBlurController {
       this.hideLayer();
       return;
     }
-    if (this.layerLoaded) this.showBehindMainWindow(layer);
+    if (this.layerPrepared && this.mainWindow.isFocused()) {
+      this.showBehindMainWindow(layer);
+    }
   }
 
   private ensureLayer(): BrowserWindow | null {
     if (this.layer && !this.layer.isDestroyed()) return this.layer;
     if (this.platform !== 'win32') return null;
 
-    const bounds = this.mainWindow.getContentBounds();
     const layer = new BrowserWindow({
-      ...bounds,
+      ...this.mainWindow.getContentBounds(),
       useContentSize: true,
       show: false,
       frame: false,
       transparent: true,
       backgroundColor: '#00000000',
-      backgroundMaterial: 'acrylic',
+      backgroundMaterial: 'none',
       focusable: false,
       skipTaskbar: true,
       resizable: false,
@@ -116,19 +129,25 @@ export class NativePanelBlurController {
       },
     });
     this.layer = layer;
-    this.layerLoaded = false;
+    this.layerPrepared = false;
     layer.setIgnoreMouseEvents(true);
     layer.on('closed', () => {
       if (this.layer === layer) {
         this.layer = null;
-        this.layerLoaded = false;
+        this.layerPrepared = false;
       }
     });
     void layer
       .loadURL(TRANSPARENT_DOCUMENT)
-      .then(() => {
-        if (this.layer !== layer || layer.isDestroyed() || this.disposed) return;
-        this.layerLoaded = true;
+      .then(async () => {
+        const blurEnabled = await enableNeutralNativeBlur(layer);
+        if (this.layer !== layer || layer.isDestroyed() || this.disposed)
+          return;
+        if (!blurEnabled) {
+          this.destroyLayer();
+          return;
+        }
+        this.layerPrepared = true;
         this.render();
       })
       .catch(() => {
@@ -147,13 +166,15 @@ export class NativePanelBlurController {
   }
 
   private hideLayer(): void {
-    if (this.layer && !this.layer.isDestroyed() && this.layer.isVisible()) this.layer.hide();
+    if (this.layer && !this.layer.isDestroyed() && this.layer.isVisible()) {
+      this.layer.hide();
+    }
   }
 
   private destroyLayer(): void {
     const layer = this.layer;
     this.layer = null;
-    this.layerLoaded = false;
+    this.layerPrepared = false;
     if (layer && !layer.isDestroyed()) layer.destroy();
   }
 }

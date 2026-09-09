@@ -13,7 +13,7 @@ describe('native panel blur geometry', () => {
         strength: 32,
         regions: [{ x: -5, y: 10, width: 105, height: 40, radius: 14 }],
       },
-      { width: 80, height: 60 }
+      { width: 80, height: 60 },
     );
     expect(payload).toEqual({
       enabled: true,
@@ -33,16 +33,17 @@ describe('native panel blur geometry', () => {
           { x: '0', y: 0, width: 10, height: 10 },
         ],
       },
-      { width: 100, height: 100 }
+      { width: 100, height: 100 },
     );
     expect(payload.enabled).toBe(false);
     expect(payload.strength).toBe(64);
     expect(payload.regions).toEqual([]);
   });
 
-  it('turns the slider into a bounded, visible native-layer opacity', () => {
+  it('maps the slider linearly to neutral blur-layer opacity', () => {
     expect(nativePanelBlurOpacity(0)).toBe(0);
-    expect(nativePanelBlurOpacity(32)).toBe(0.6);
+    expect(nativePanelBlurOpacity(16)).toBe(0.25);
+    expect(nativePanelBlurOpacity(32)).toBe(0.5);
     expect(nativePanelBlurOpacity(64)).toBe(1);
     expect(nativePanelBlurOpacity(999)).toBe(1);
   });
@@ -53,9 +54,14 @@ describe('native panel blur geometry', () => {
     ]);
     expect(shape.length).toBeGreaterThan(1);
     expect(shape[0].x).toBeGreaterThan(10);
-    expect(shape.some((rectangle) => rectangle.x === 10 && rectangle.width === 100)).toBe(true);
     expect(
-      shape.every((rectangle) => rectangle.y >= 20 && rectangle.y + rectangle.height <= 70)
+      shape.some((rectangle) => rectangle.x === 10 && rectangle.width === 100),
+    ).toBe(true);
+    expect(
+      shape.every(
+        (rectangle) =>
+          rectangle.y >= 20 && rectangle.y + rectangle.height <= 70,
+      ),
     ).toBe(true);
   });
 });

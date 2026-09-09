@@ -15,6 +15,10 @@ extraResources:
     to: node
     filter:
       - '**/*'
+  - from: vendor/native
+    to: native
+    filter:
+      - Luma.NativeBlur.exe
   - from: THIRD_PARTY_NOTICES.md
     to: THIRD_PARTY_NOTICES.md
 win:

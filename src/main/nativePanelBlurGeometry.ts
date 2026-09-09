@@ -25,32 +25,51 @@ const finiteNumber = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 const recordValue = (value: unknown): Record<string, unknown> | null =>
-  typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
+  typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
 
 export function normalizeNativePanelBlurPayload(
   value: unknown,
-  bounds: PanelBlurBounds
+  bounds: PanelBlurBounds,
 ): NativePanelBlurPayload {
   const record = recordValue(value);
-  const boundWidth = clamp(Math.round(finiteNumber(bounds.width) ?? 0), 0, 16_384);
-  const boundHeight = clamp(Math.round(finiteNumber(bounds.height) ?? 0), 0, 16_384);
+  const boundWidth = clamp(
+    Math.round(finiteNumber(bounds.width) ?? 0),
+    0,
+    16_384,
+  );
+  const boundHeight = clamp(
+    Math.round(finiteNumber(bounds.height) ?? 0),
+    0,
+    16_384,
+  );
   const requestedStrength = finiteNumber(record?.strength) ?? 0;
   const strength = clamp(
     Math.round(requestedStrength),
     0,
-    MAX_NATIVE_PANEL_BLUR_STRENGTH
+    MAX_NATIVE_PANEL_BLUR_STRENGTH,
   );
   const regions: NativePanelBlurRegion[] = [];
   const requestedRegions = Array.isArray(record?.regions) ? record.regions : [];
 
-  for (const requested of requestedRegions.slice(0, MAX_NATIVE_PANEL_BLUR_REGIONS)) {
+  for (const requested of requestedRegions.slice(
+    0,
+    MAX_NATIVE_PANEL_BLUR_REGIONS,
+  )) {
     const region = recordValue(requested);
     if (!region) continue;
     const rawX = finiteNumber(region.x);
     const rawY = finiteNumber(region.y);
     const rawWidth = finiteNumber(region.width);
     const rawHeight = finiteNumber(region.height);
-    if (rawX === null || rawY === null || rawWidth === null || rawHeight === null) continue;
+    if (
+      rawX === null ||
+      rawY === null ||
+      rawWidth === null ||
+      rawHeight === null
+    )
+      continue;
     if (rawWidth <= 0 || rawHeight <= 0) continue;
 
     const left = clamp(Math.floor(rawX), 0, boundWidth);
@@ -63,12 +82,12 @@ export function normalizeNativePanelBlurPayload(
 
     const maximumRadius = Math.min(
       MAX_NATIVE_PANEL_RADIUS,
-      Math.floor(Math.min(width, height) / 2)
+      Math.floor(Math.min(width, height) / 2),
     );
     const radius = clamp(
       Math.round(finiteNumber(region.radius) ?? 0),
       0,
-      maximumRadius
+      maximumRadius,
     );
     regions.push({ x: left, y: top, width, height, radius });
   }
@@ -84,29 +103,28 @@ export function nativePanelBlurOpacity(strength: number): number {
   const normalized = clamp(
     Math.round(Number.isFinite(strength) ? strength : 0),
     0,
-    MAX_NATIVE_PANEL_BLUR_STRENGTH
+    MAX_NATIVE_PANEL_BLUR_STRENGTH,
   );
-  if (normalized === 0) return 0;
-  return Number(
-    (0.2 + 0.8 * (normalized / MAX_NATIVE_PANEL_BLUR_STRENGTH)).toFixed(4)
-  );
+  return Number((normalized / MAX_NATIVE_PANEL_BLUR_STRENGTH).toFixed(4));
 }
 
 export function nativePanelBlurShape(
-  regions: readonly NativePanelBlurRegion[]
+  regions: readonly NativePanelBlurRegion[],
 ): PanelBlurShapeRectangle[] {
   return regions.flatMap(roundedRectangleShape);
 }
 
 function roundedRectangleShape(
-  region: NativePanelBlurRegion
+  region: NativePanelBlurRegion,
 ): PanelBlurShapeRectangle[] {
   const radius = Math.min(
     Math.max(0, Math.round(region.radius)),
-    Math.floor(Math.min(region.width, region.height) / 2)
+    Math.floor(Math.min(region.width, region.height) / 2),
   );
   if (radius === 0)
-    return [{ x: region.x, y: region.y, width: region.width, height: region.height }];
+    return [
+      { x: region.x, y: region.y, width: region.width, height: region.height },
+    ];
 
   const rows: PanelBlurShapeRectangle[] = [];
   for (let row = 0; row < region.height; row += 1) {
@@ -115,7 +133,7 @@ function roundedRectangleShape(
     if (edgeDistance < radius) {
       const vertical = radius - edgeDistance;
       inset = Math.ceil(
-        radius - Math.sqrt(Math.max(0, radius * radius - vertical * vertical))
+        radius - Math.sqrt(Math.max(0, radius * radius - vertical * vertical)),
       );
     }
     const width = region.width - inset * 2;

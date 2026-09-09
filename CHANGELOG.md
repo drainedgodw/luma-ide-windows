@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 — Neutral panel blur
+
+- Removed Electron Acrylic from the auxiliary blur window because its built-in system tint produced the solid gray panels shown at high slider values.
+- Added a small packaged Windows helper that applies live `ACCENT_ENABLE_BLURBEHIND` composition with a zero tint color to the auxiliary window.
+- Kept both the main window and the auxiliary layer fully transparent with `backgroundMaterial: 'none'`.
+- Kept the native layer clipped to the rounded header, sidebar, top-level view panel, welcome surface and terminal rather than covering the full app.
+- Made the 0–64 slider blend the neutral blurred layer linearly: 0 removes it, 32 uses 50% intensity and 64 uses full intensity.
+- Prevented background renderer updates from promoting Luma over whichever application currently has focus.
+- Kept workspace-switch region remeasurement, strict IPC validation, click-through behavior and the rule that Luma never reads or renders the desktop wallpaper.
+- Added source and packaging checks for the native helper and untinted panel-only architecture.
+
 ## 0.4.0 — Native panel blur
 
 - Preserved the real transparent Electron content window with `backgroundMaterial: 'none'`; no gray or blue material is applied across the full application.

@@ -4,6 +4,7 @@ dist/
 release/
 vendor/mingit/
 vendor/node/
+vendor/native/
 .cache/
 .luma/
 research/
