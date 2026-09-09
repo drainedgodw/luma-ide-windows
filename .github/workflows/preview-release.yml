@@ -143,7 +143,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The packaged MinGit executable failed its version check.' }
           & 'dist/win-unpacked/resources/node/node.exe' --version
           if ($LASTEXITCODE -ne 0) { throw 'The packaged Node.js executable failed its version check.' }
-          & 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js' --version
+          & 'dist/win-unpacked/resources/node/node.exe' 'dist/win-unpacked/resources/node/node_modules/npm/bin/npm-cli.js' --version
           if ($LASTEXITCODE -ne 0) { throw 'The packaged npm CLI failed its version check.' }
       - name: Prepare release assets
         shell: pwsh
