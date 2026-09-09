@@ -7,7 +7,6 @@ import { registerGitHubIpc } from './githubIpc';
 import { registerIntelligenceIpc } from './intelligenceIpc';
 import { registerUpdateIpc } from './update';
 import { getWallpaper } from './wallpaper';
-import { applyWindowBlur } from './windowBlur';
 
 if (process.platform === 'win32') app.setAppUserModelId('dev.luma.ide');
 app.commandLine.appendSwitch('enable-smooth-scrolling');
@@ -22,6 +21,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
+    backgroundMaterial: 'none',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -37,7 +37,6 @@ function createWindow() {
     else win?.maximize();
   });
   ipcMain.on('win:close', () => win?.close());
-  ipcMain.on('win:blur', (_event, enabled: unknown) => applyWindowBlur(win, enabled === true));
   ipcMain.handle('wallpaper:get', () => getWallpaper());
   if (process.env.LUMA_REPO) {
     (win as BrowserWindow & { __repo?: string }).__repo = process.env.LUMA_REPO;

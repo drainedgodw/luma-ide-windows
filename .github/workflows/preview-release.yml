@@ -125,15 +125,17 @@ jobs:
           }
           $checksums | Set-Content 'release/SHA256SUMS.txt' -Encoding ascii
           @"
-          # Luma 0.4.0 — Acrylic Blur (Windows Preview)
+          # Luma 0.4.0 — Transparency Hotfix (Windows Preview)
 
           Self-contained Windows 10/11 x64 preview built from commit $env:GITHUB_SHA.
 
-          Liquid Glass remains a real transparent Electron window and never imports the desktop wallpaper. Settings now has one Blur switch instead of a strength slider. On supported Windows versions, turning it on selects native Acrylic while keeping the window translucent; turning it off selects no native background material. A fixed 32 px panel blur remains as the safe fallback.
+          The rejected whole-window Acrylic backdrop has been removed completely. Luma again uses a real transparent Electron window with native background material explicitly disabled, so switching workspaces cannot leave a gray full-window layer. The desktop wallpaper is never read, copied or rendered by Luma.
 
-          Stack includes allowlisted install/remove actions for every framework and library shown in the current catalog. Node, Python, Cargo, Go and .NET actions use their project-native package managers. Java dependencies are managed in pom.xml, C/C++ dependencies in vcpkg.json, MAUI as a .NET workload, and Unity/Unreal through their official Windows launchers. Workspace Trust is required and commands remain fixed in the main process with shell execution disabled.
+          The 0–64 px Panel blur slider is restored and scoped only to the header, sidebar, main panel, terminal and nested glass blocks. Electron CSS cannot sample pixels outside the app, so this slider does not claim to blur the Windows desktop itself; true panel-only desktop blur needs a separate native composition design.
 
-          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen. Manual visual testing of Acrylic remains required because CI has no interactive desktop compositor.
+          Stack retains allowlisted install/remove actions for every framework and library shown in the current catalog. Workspace Trust is required and commands remain fixed in the main process with shell execution disabled.
+
+          The installer includes Electron, application files, production dependencies, native node-pty, verified MinGit 2.55.0.5 and verified Node/npm. This preview is unsigned and may trigger Microsoft Defender SmartScreen.
           "@ | Set-Content 'release-notes.md' -Encoding utf8
       - name: Publish rolling preview release
         shell: pwsh
@@ -141,7 +143,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = 'windows-preview'
-          $title = 'Luma 0.4.0 — Acrylic Blur (Windows Preview)'
+          $title = 'Luma 0.4.0 — Transparency Hotfix (Windows Preview)'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git tag --force $tag $env:GITHUB_SHA

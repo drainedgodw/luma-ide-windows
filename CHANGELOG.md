@@ -4,25 +4,17 @@ All notable changes are documented here. Luma follows semantic versioning once s
 
 ## [0.4.0] - 2026-09-09
 
-### Added
+### Fixed
 
-- Replaced the numeric panel-blur slider with one persisted **Blur** switch.
-- Added native Windows Acrylic blur for the transparent Liquid Glass window.
-- Kept the fixed 32 px frosted-panel blur as a fallback when native Acrylic is unavailable.
-
-### Changed
-
-- Any non-zero blur value saved by 0.3.0 migrates to the single enabled state; zero remains disabled.
-- Turning Blur off selects the native `none` material while preserving Electron's real transparent window.
+- Removed the rejected whole-window Acrylic material that covered Luma with a gray or blue backdrop.
+- Explicitly keep the Windows background material set to `none`; the root window remains genuinely transparent.
+- Restored the 0–64 px panel slider and scope its CSS filter only to the header, sidebar, main surface, terminal and nested glass blocks.
+- Prevented the native material from persisting or changing after switching between workspaces.
 - Luma still never reads, copies, caches or renders the desktop wallpaper.
-
-### Security
-
-- The renderer sends only a boolean preference. The main process alone chooses between the fixed `acrylic` and `none` materials.
 
 ### Compatibility
 
-- Native Acrylic depends on Windows and DWM support. Unsupported systems safely keep real transparency and the panel fallback instead of using a wallpaper imitation.
+- Electron CSS cannot sample or blur pixels from applications or the Windows desktop behind a transparent window. The restored slider affects only content inside Electron; real panel-only desktop blur requires a different native window/composition architecture.
 
 ## [0.3.0] - 2026-09-08
 
@@ -33,7 +25,6 @@ All notable changes are documented here. Luma follows semantic versioning once s
 - Added platform-aware runtime plans for Windows `winget` and Linux apt, dnf, pacman and zypper through `pkexec`.
 - Added installed-state refresh, system-wide removal warnings and visible command output.
 - Restored the original transparent Liquid Glass layout and moved blur control from the wallpaper to the interface panels.
-- Added a persisted 0–64 px panel blur slider; the 32 px default preserves the original appearance.
 
 ### Security
 
@@ -53,24 +44,13 @@ All notable changes are documented here. Luma follows semantic versioning once s
 - Sound controls in Settings, including a master switch and volume slider.
 - A draggable terminal divider with keyboard resizing, remembered height and a one-click maximize/restore control.
 
-### Changed
-
-- The integrated terminal now refits its PTY automatically while it is resized or maximized.
-- Release metadata and in-app version information now identify the 0.2.0 line.
-
 ## [0.1.1] - 2026-09-01
 
 ### Added
 
-- Anonymous update check against a plain `update.json` file (no accounts, no telemetry); the app offers an update only when a newer release exists, and Settings can reinstall to the latest main build.
+- Anonymous update checks with no accounts or telemetry.
 - Unit tests for the graph lane layout.
-- Release and nightly artifacts are signed with keyless cosign; `install.sh` verifies the signature when cosign is available.
-- `install.sh --nightly` installs the rolling build of the latest main commit.
-
-### Changed
-
-- Simpler graph lane assignment.
-- Bisect view tracks good/bad marks per commit.
+- Signed release and nightly artifacts.
 
 ## [0.1.0] - 2026-09-01
 
@@ -80,10 +60,3 @@ All notable changes are documented here. Luma follows semantic versioning once s
 - Visual staging, commit diffs, branch operations, rebase, bisect and Rescue.
 - GitHub PAT/SSH repository access.
 - Workspace Trust, Tasks/Test Center, local Risk Map, Operation Preview and Secret Guard.
-- Session Capsules and rollback checkpoints.
-
-### Known limitations
-
-- Language Intelligence is not protocol-based LSP.
-- Risk Map reflects local test results rather than GitHub CI.
-- Capsules do not restore live PTY processes.

@@ -41,9 +41,6 @@ const DEFAULTS: Settings = {
 
 const KEY = 'luma.settings';
 type StoredSettings = Partial<Settings> & { wallpaperBlur?: unknown };
-type NativeBlurBridge = typeof globalThis & {
-  luma?: { winBlur?: (enabled: boolean) => void };
-};
 const Ctx = createContext<{ settings: Settings; update: (patch: Partial<Settings>) => void }>({ settings: DEFAULTS, update: () => {} });
 export const useSettings = () => useContext(Ctx);
 
@@ -51,28 +48,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as StoredSettings;
-      const storedBlur = normalizePanelBlur(stored.panelBlur ?? stored.wallpaperBlur);
-      return {
-        ...DEFAULTS,
-        ...stored,
-        panelBlur: storedBlur > 0 ? DEFAULT_PANEL_BLUR : 0,
-      };
+      return { ...DEFAULTS, ...stored, panelBlur: normalizePanelBlur(stored.panelBlur ?? stored.wallpaperBlur) };
     } catch {
       return DEFAULTS;
     }
   });
   const update = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
   useEffect(() => {
-    const blurEnabled = settings.theme === 'liquid' && settings.panelBlur > 0;
     localStorage.setItem(KEY, JSON.stringify(settings));
     document.documentElement.classList.toggle('reduce-motion', settings.reduceMotion);
     document.documentElement.dataset.theme = settings.theme;
-    document.documentElement.dataset.blur = blurEnabled ? 'on' : 'off';
-    document.documentElement.style.setProperty(
-      '--panel-blur',
-      `${settings.panelBlur > 0 ? DEFAULT_PANEL_BLUR : 0}px`
-    );
-    (globalThis as NativeBlurBridge).luma?.winBlur?.(blurEnabled);
+    document.documentElement.style.setProperty('--panel-blur', `${settings.panelBlur}px`);
   }, [settings]);
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
